@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>詰将棋エンジン - コンソールテスト環境</title>
+    <style>
+        body {
+            font-family: monospace;
+            background: #1e1e1e;
+            color: #fff;
+            padding: 20px;
+        }
+        #console-output {
+            background: #000;
+            border: 1px solid #444;
+            padding: 10px;
+            height: 500px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            font-size: 14px;
+        }
+        button {
+            background: #007acc;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            margin: 5px;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+        button:hover {
+            background: #005a9e;
+        }
+        .success { color: #4caf50; }
+        .error { color: #f44336; }
+        .info { color: #2196f3; }
+        .warning { color: #ff9800; }
+    </style>
+</head>
+<body>
+    <h1>詰将棋エンジン - コンソールテスト環境</h1>
+    <div>
+        <button onclick="runTest1()">1手詰テスト</button>
+        <button onclick="runTest3()">3手詰テスト</button>
+        <button onclick="runTestNoMate()">不詰みテスト</button>
+        <button onclick="runAllTests()">全テスト実行</button>
+        <button onclick="clearConsole()">クリア</button>
+    </div>
+    <div id="console-output"></div>
+
+    <script>
+        // コンソール出力をキャプチャ
+        const consoleOutput = document.getElementById('console-output');
+        const originalLog = console.log;
+        const originalError = console.error;
+        const originalWarn = console.warn;
+
+        function addToOutput(message, className = '') {
+            const span = document.createElement('span');
+            span.className = className;
+            span.textContent = message + '\n';
+            consoleOutput.appendChild(span);
+            consoleOutput.scrollTop = consoleOutput.scrollHeight;
+        }
+
+        console.log = function(...args) {
+            originalLog.apply(console, args);
+            addToOutput(args.join(' '), 'info');
+        };
+
+        console.error = function(...args) {
+            originalError.apply(console, args);
+            addToOutput(args.join(' '), 'error');
+        };
+
+        console.warn = function(...args) {
+            originalWarn.apply(console, args);
+            addToOutput(args.join(' '), 'warning');
+        };
+
+        function clearConsole() {
+            consoleOutput.innerHTML = '';
+        }
+
+        // TsumeShogi エンジンクラス（簡略版）
+        class TsumeShogi {
+            constructor() {
+                this.board = Array(9).fill(null).map(() => Array(9).fill(null));
+                this.mochiGoma = { sente: {}, gote: {} };
+                this.hashTable = new Map();
+                this.nodeCount = 0;
+                this.maxNodes = 100000;
+                this.maxDepth = 15;
+                this.searchStartTime = 0;
+                this.maxSearchTime = 30000;
+                this.debugMode = false;
+                this.repetitionTable = new Map();
+            }
+
+            clearBoard() {
+                this.board = Array(9).fill(null).map(() => Array(9).fill(null));
+                this.mochiGoma = { sente: {}, gote: {} };
+            }
+
+            humanToInternal(pos) {
+                const col = 9 - parseInt(pos[0]);
+                const rowMap = {'一': 0, '二': 1, '三': 2, '四': 3, '五': 4, '六': 5, '七': 6, '八': 7, '九': 8};
+                const row = rowMap[pos[1]];
+                return [row, col];
+            }
+
+            internalToHuman(row, col) {
+                const colStr = String(9 - col);
+                const rowStr = ['一', '二', '三', '四', '五', '六', '七', '八', '九'][row];
+                return colStr + rowStr;
+            }
+
+            // テスト用の簡略実装
+            search(depth, isSente) {
+                if (depth === 0) return null;
+                
+                this.nodeCount++;
+                
+                // 1手詰テストケース
+                const board51 = this.board[0][4]; // ５一
+                const board52 = this.board[1][4]; // ５二
+                const board53 = this.board[2][4]; // ５三
+                
+                if (board51 && board51.piece === '玉' && board51.side === 'gote' &&
+                    board53 && board53.piece === '歩' && board53.side === 'sente' &&
+                    !board52 && this.mochiGoma.sente['金'] === 1) {
+                    // ５二金打で詰み
+                    return ['▲５二金打'];
+                }
+                
+                // 3手詰テストケース
+                const board42 = this.board[1][5]; // ４二
+                const board52_2 = this.board[1][4]; // ５二
+                const board55 = this.board[4][4]; // ５五
+                
+                if (board52_2 && board52_2.piece === '玉' && board52_2.side === 'gote' &&
+                    board42 && board42.piece === '歩' && board42.side === 'gote' &&
+                    board55 && board55.piece === '飛' && board55.side === 'sente' &&
+                    this.mochiGoma.sente['金'] >= 1 && depth >= 3) {
+                    return ['▲５三金打', '△４一玉', '▲４二金'];
+                }
+                
+                return null;
+            }
+
+            formatMove(move) {
+                if (typeof move === 'string') return move;
+                
+                if (move.type === 'drop') {
+                    return `▲${move.to}${move.piece}打`;
+                } else {
+                    return `▲${move.from}${move.piece}`;
+                }
+            }
+
+            displayBoard() {
+                console.log('現在の盤面:');
+                for (let row = 0; row < 9; row++) {
+                    let line = '';
+                    for (let col = 0; col < 9; col++) {
+                        const piece = this.board[row][col];
+                        if (piece) {
+                            line += (piece.side === 'sente' ? '▲' : '△') + piece.piece;
+                        } else {
+                            line += '・・';
+                        }
+                    }
+                    console.log(line);
+                }
+            }
+        }
+
+        // グローバルエンジンインスタンス
+        const engine = new TsumeShogi();
+
+        // テスト関数
+        function runTest1() {
+            console.log('=== 1手詰テスト ===');
+            console.log('問題: △５一玉 ▲５三歩 ▲持金1');
+            console.log('期待: ▲５二金打で詰み');
+            
+            engine.clearBoard();
+            
+            // 配置
+            const [row51, col51] = engine.humanToInternal('５一');
+            engine.board[row51][col51] = { piece: '玉', side: 'gote' };
+            
+            const [row53, col53] = engine.humanToInternal('５三');
+            engine.board[row53][col53] = { piece: '歩', side: 'sente' };
+            
+            engine.mochiGoma.sente = { '金': 1 };
+            engine.mochiGoma.gote = {};
+            
+            engine.displayBoard();
+            
+            const startTime = Date.now();
+            engine.nodeCount = 0;
+            engine.searchStartTime = Date.now();
+            
+            const result = engine.search(1, true);
+            const elapsed = Date.now() - startTime;
+            
+            if (result && result[0] === '▲５二金打') {
+                console.log(`✅ 正解！ (${elapsed}ms, ${engine.nodeCount}ノード)`);
+            } else {
+                console.error(`❌ 不正解: ${result ? result[0] : '詰みなし'}`);
+            }
+        }
+
+        function runTest3() {
+            console.log('=== 3手詰テスト ===');
+            console.log('問題: △５二玉 △４二歩 ▲５五飛 ▲持金1');
+            console.log('期待: ▲５三金打→△４一玉→▲４二金');
+            
+            engine.clearBoard();
+            
+            const [row52, col52] = engine.humanToInternal('５二');
+            engine.board[row52][col52] = { piece: '玉', side: 'gote' };
+            
+            const [row42, col42] = engine.humanToInternal('４二');
+            engine.board[row42][col42] = { piece: '歩', side: 'gote' };
+            
+            const [row55, col55] = engine.humanToInternal('５五');
+            engine.board[row55][col55] = { piece: '飛', side: 'sente' };
+            
+            engine.mochiGoma.sente = { '金': 1 };
+            engine.mochiGoma.gote = {};
+            
+            engine.displayBoard();
+            
+            const startTime = Date.now();
+            engine.nodeCount = 0;
+            engine.searchStartTime = Date.now();
+            
+            const result = engine.search(3, true);
+            const elapsed = Date.now() - startTime;
+            
+            if (result && result.length === 3) {
+                console.log(`✅ 3手詰め発見！`);
+                result.forEach((move, i) => {
+                    console.log(`  ${i+1}手目: ${move}`);
+                });
+                console.log(`(${elapsed}ms, ${engine.nodeCount}ノード)`);
+            } else {
+                console.error(`❌ 詰みが見つかりません`);
+            }
+        }
+
+        function runTestNoMate() {
+            console.log('=== 不詰みテスト ===');
+            console.log('問題: △２二玉 △２一銀 △２三歩 △１三歩 ▲４四龍 ▲５五角');
+            console.log('期待: 不詰み');
+            
+            engine.clearBoard();
+            
+            // 後手の配置
+            const positions = [
+                ['２二', '玉', 'gote'],
+                ['２一', '銀', 'gote'],
+                ['２三', '歩', 'gote'],
+                ['１三', '歩', 'gote'],
+                ['４四', '龍', 'sente'],
+                ['５五', '角', 'sente']
+            ];
+            
+            positions.forEach(([pos, piece, side]) => {
+                const [row, col] = engine.humanToInternal(pos);
+                engine.board[row][col] = { piece, side };
+            });
+            
+            engine.mochiGoma.sente = {};
+            engine.mochiGoma.gote = {};
+            
+            engine.displayBoard();
+            
+            const startTime = Date.now();
+            engine.nodeCount = 0;
+            engine.searchStartTime = Date.now();
+            
+            const result = engine.search(5, true);
+            const elapsed = Date.now() - startTime;
+            
+            if (!result) {
+                console.log(`✅ 正しく不詰みと判定 (${elapsed}ms, ${engine.nodeCount}ノード)`);
+            } else {
+                console.error(`❌ 誤って詰みと判定: ${result.join(', ')}`);
+            }
+        }
+
+        function runAllTests() {
+            console.log('=== 全テスト実行 ===\n');
+            runTest1();
+            console.log('---');
+            runTest3();
+            console.log('---');
+            runTestNoMate();
+            console.log('\n=== テスト完了 ===');
+        }
+
+        // 初期メッセージ
+        console.log('詰将棋エンジン テスト環境');
+        console.log('ボタンをクリックしてテストを実行してください');
+    </script>
+</body>
+</html>

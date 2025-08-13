@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>3手詰めテスト</title>
+</head>
+<body>
+    <h1>3手詰めテスト</h1>
+    <pre id="output"></pre>
+    
+    <script>
+        // 座標変換
+        function humanToInternal(pos) {
+            const col = 9 - parseInt(pos[0]);
+            const rowMap = {
+                '一': 0, '二': 1, '三': 2, '四': 3, '五': 4,
+                '六': 5, '七': 6, '八': 7, '九': 8
+            };
+            const row = rowMap[pos[1]];
+            return [row, col];
+        }
+        
+        function internalToHuman(row, col) {
+            const colStr = String(9 - col);
+            const rowStrs = ['一', '二', '三', '四', '五', '六', '七', '八', '九'];
+            return colStr + rowStrs[row];
+        }
+        
+        // 簡易テスト
+        const output = document.getElementById('output');
+        
+        // 3手詰め問題の設定
+        output.textContent += "3手詰め問題:\n";
+        output.textContent += "△５一玉 (後手玉)\n";
+        output.textContent += "△４二銀 (後手銀)\n";
+        output.textContent += "▲２二飛 (先手飛車)\n";
+        output.textContent += "▲持ち駒: 銀1枚\n\n";
+        
+        output.textContent += "正解手順:\n";
+        output.textContent += "1. ▲２一飛成 (飛車を２一に移動して成る)\n";
+        output.textContent += "2. △３一歩合 (後手が３一に歩を打って合駒)\n"; 
+        output.textContent += "3. ▲５二銀打 (先手が５二に銀を打つ) 詰み\n\n";
+        
+        // 重要な確認事項
+        output.textContent += "デバッグポイント:\n";
+        output.textContent += "1. ▲２一飛成の後、後手の合法手生成時に△３一歩打が生成されるか?\n";
+        output.textContent += "2. canGoteUsePiece('歩')がtrueを返すか?\n";
+        output.textContent += "3. canDropGote('歩', 2, 5)がtrueを返すか? (３一 = [2,5])\n";
+        output.textContent += "4. 合駒チェックで飛び駒判定が正しく動作するか?\n\n";
+        
+        // canGoteUsePieceのテスト
+        output.textContent += "canGoteUsePiece('歩')のロジック確認:\n";
+        output.textContent += "- 歩の最大枚数: 18\n";
+        output.textContent += "- 盤上の歩: 0枚 (この問題では)\n";
+        output.textContent += "- 先手の持ち歩: 0枚\n";
+        output.textContent += "- 後手が使える歩: 18 - 0 - 0 = 18枚 → true\n\n";
+        
+        // 座標確認
+        output.textContent += "座標変換確認:\n";
+        const test31 = humanToInternal('３一');
+        output.textContent += `３一 → 内部座標[${test31[0]}, ${test31[1]}]\n`;
+        output.textContent += `内部座標[2, 5] → ${internalToHuman(2, 5)}\n`;
+    </script>
+</body>
+</html>

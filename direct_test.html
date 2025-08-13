@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>直接テスト - 3手詰め</title>
+    <style>
+        pre { font-family: monospace; line-height: 1.5; }
+        .success { color: green; font-weight: bold; }
+        .error { color: red; font-weight: bold; }
+        .debug { color: blue; }
+    </style>
+</head>
+<body>
+    <h1>3手詰め問題の直接テスト</h1>
+    <div id="board"></div>
+    <pre id="output"></pre>
+    
+    <script>
+        // Nanoha-tsume.htmlから必要な部分をコピー
+        function humanToInternal(pos) {
+            const col = 9 - parseInt(pos[0]);
+            const rowMap = {
+                '一': 0, '二': 1, '三': 2, '四': 3, '五': 4,
+                '六': 5, '七': 6, '八': 7, '九': 8
+            };
+            const row = rowMap[pos[1]];
+            return [row, col];
+        }
+        
+        function internalToHuman(row, col) {
+            const colStr = String(9 - col);
+            const rowStrs = ['一', '二', '三', '四', '五', '六', '七', '八', '九'];
+            return colStr + rowStrs[row];
+        }
+        
+        // 簡易版の詰将棋クラス（合駒生成部分のみ）
+        class SimpleTsume {
+            constructor() {
+                this.board = Array(9).fill().map(() => Array(9).fill(null));
+                this.mochiGoma = { sente: {}, gote: {} };
+                this.debugLog = [];
+            }
+            
+            setup3MoveProblem() {
+                // △５一玉
+                const [r1, c1] = humanToInternal('５一');
+                this.board[r1][c1] = { piece: '玉', side: 'gote' };
+                
+                // △４二銀
+                const [r2, c2] = humanToInternal('４二');
+                this.board[r2][c2] = { piece: '銀', side: 'gote' };
+                
+                // ▲２一龍（飛車が成った後）
+                const [r3, c3] = humanToInternal('２一');
+                this.board[r3][c3] = { piece: '龍', side: 'sente' };
+                
+                // ▲持駒：銀1
+                this.mochiGoma.sente['銀'] = 1;
+            }
+            
+            canGoteUsePiece(piece) {
+                const maxPieces = {
+                    '飛': 2, '角': 2, '金': 4, '銀': 4,
+                    '桂': 4, '香': 4, '歩': 18
+                };
+                
+                let boardCount = 0;
+                let senteHandCount = this.mochiGoma.sente[piece] || 0;
+                
+                // 盤上の駒を数える
+                for (let row = 0; row < 9; row++) {
+                    for (let col = 0; col < 9; col++) {
+                        const p = this.board[row][col];
+                        if (p && p.piece === piece) {
+                            boardCount++;
+                        }
+                    }
+                }
+                
+                const available = maxPieces[piece] - boardCount - senteHandCount;
+                this.debugLog.push(`canGoteUsePiece('${piece}'): max=${maxPieces[piece]}, board=${boardCount}, sente=${senteHandCount}, available=${available}`);
+                return available > 0;
+            }
+            
+            canDropGote(piece, row, col) {
+                // 二歩チェック
+                if (piece === '歩') {
+                    for (let r = 0; r < 9; r++) {
+                        if (this.board[r][col] && 
+                            this.board[r][col].piece === '歩' && 
+                            this.board[r][col].side === 'gote') {
+                            this.debugLog.push(`canDropGote('歩', ${row}, ${col}): 二歩`);
+                            return false;
+                        }
+                    }
+                }
+                
+                // 行き所チェック
+                if ((piece === '歩' || piece === '香') && row === 8) {
+                    this.debugLog.push(`canDropGote('${piece}', ${row}, ${col}): 行き所なし`);
+                    return false;
+                }
+                if (piece === '桂' && row >= 7) {
+                    this.debugLog.push(`canDropGote('${piece}', ${row}, ${col}): 行き所なし`);
+                    return false;
+                }
+                
+                this.debugLog.push(`canDropGote('${piece}', ${row}, ${col}): OK`);
+                return true;
+            }
+            
+            testBlockingGeneration() {
+                this.debugLog = [];
+                
+                // 玉と攻撃駒の位置
+                const kingPos = humanToInternal('５一');
+                const attackerPos = humanToInternal('２一');
+                const attackPiece = this.board[attackerPos[0]][attackerPos[1]];
+                
+                this.debugLog.push(`玉: ${internalToHuman(kingPos[0], kingPos[1])}`);
+                this.debugLog.push(`攻撃駒: ${attackPiece.piece} at ${internalToHuman(attackerPos[0], attackerPos[1])}`);
+                
+                // 飛び駒チェック
+                const rangedPieces = ['飛', '龍', '角', '馬', '香'];
+                if (rangedPieces.includes(attackPiece.piece)) {
+                    this.debugLog.push('飛び駒による王手 → 合駒を検討');
+                    
+                    // 王手の線上のマスを探す
+                    const dr = Math.sign(kingPos[0] - attackerPos[0]);
+                    const dc = Math.sign(kingPos[1] - attackerPos[1]);
+                    
+                    this.debugLog.push(`方向: dr=${dr}, dc=${dc}`);
+                    
+                    let r = attackerPos[0] + dr;
+                    let c = attackerPos[1] + dc;
+                    
+                    while (r !== kingPos[0] || c !== kingPos[1]) {
+                        const blockPos = internalToHuman(r, c);
+                        const [blockRow, blockCol] = humanToInternal(blockPos);
+                        
+                        this.debugLog.push(`\n合駒候補位置: ${blockPos}`);
+                        
+                        // 空きマスチェック
+                        if (this.board[blockRow][blockCol]) {
+                            this.debugLog.push(`  → 埋まっている`);
+                        } else {
+                            this.debugLog.push(`  → 空きマス`);
+                            
+                            // 歩で合駒を試す
+                            if (this.canGoteUsePiece('歩')) {
+                                if (this.canDropGote('歩', blockRow, blockCol)) {
+                                    this.debugLog.push(`  <span class="success">→ △${blockPos}歩打が可能！</span>`);
+                                }
+                            }
+                        }
+                        
+                        r += dr;
+                        c += dc;
+                    }
+                }
+                
+                return this.debugLog;
+            }
+        }
+        
+        // テスト実行
+        const tsume = new SimpleTsume();
+        tsume.setup3MoveProblem();
+        const logs = tsume.testBlockingGeneration();
+        
+        document.getElementById('output').innerHTML = logs.join('\n');
+    </script>
+</body>
+</html>

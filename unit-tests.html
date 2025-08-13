@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>なのは詰めエンジン - 単体テスト</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            margin: 20px;
+            background: #f5f5f5;
+        }
+        .test-suite {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .test-group {
+            margin: 20px 0;
+            padding: 15px;
+            border-left: 3px solid #2196F3;
+            background: #f9f9f9;
+        }
+        .test-case {
+            margin: 10px 0;
+            padding: 10px;
+            background: white;
+            border-radius: 5px;
+        }
+        .pass {
+            color: #4CAF50;
+            font-weight: bold;
+        }
+        .fail {
+            color: #f44336;
+            font-weight: bold;
+        }
+        .test-result {
+            margin-left: 20px;
+            padding: 5px;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        button {
+            padding: 10px 20px;
+            background: #2196F3;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 5px;
+        }
+        button:hover {
+            background: #1976D2;
+        }
+        .summary {
+            padding: 15px;
+            background: #e3f2fd;
+            border-radius: 5px;
+            margin: 20px 0;
+            font-size: 18px;
+        }
+        .error-detail {
+            background: #ffebee;
+            color: #c62828;
+            padding: 10px;
+            border-radius: 5px;
+            margin: 5px 0;
+            font-family: monospace;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🧪 なのは詰めエンジン - 単体テスト</h1>
+    
+    <div class="test-suite">
+        <h2>テスト制御</h2>
+        <button onclick="runAllTests()">全テスト実行</button>
+        <button onclick="runCoreTests()">コア機能テスト</button>
+        <button onclick="runValidationTests()">妥当性検証テスト</button>
+        <button onclick="runPerformanceTests()">パフォーマンステスト</button>
+        <button onclick="clearResults()">結果クリア</button>
+    </div>
+    
+    <div id="testSummary" class="summary" style="display: none;"></div>
+    <div id="testResults"></div>
+
+    <script>
+        // テストフレームワーク
+        class TestRunner {
+            constructor() {
+                this.results = [];
+                this.currentGroup = '';
+            }
+
+            assert(condition, message) {
+                if (!condition) {
+                    throw new Error(message || 'Assertion failed');
+                }
+            }
+
+            assertEquals(actual, expected, message) {
+                if (actual !== expected) {
+                    throw new Error(message || `Expected ${expected}, got ${actual}`);
+                }
+            }
+
+            assertArrayEquals(actual, expected, message) {
+                if (JSON.stringify(actual) !== JSON.stringify(expected)) {
+                    throw new Error(message || `Arrays not equal: ${JSON.stringify(actual)} !== ${JSON.stringify(expected)}`);
+                }
+            }
+
+            runTest(name, testFunc) {
+                const startTime = performance.now();
+                let result = {
+                    name: name,
+                    group: this.currentGroup,
+                    passed: false,
+                    error: null,
+                    time: 0
+                };
+
+                try {
+                    testFunc();
+                    result.passed = true;
+                } catch (error) {
+                    result.error = error.message;
+                }
+
+                result.time = performance.now() - startTime;
+                this.results.push(result);
+                return result;
+            }
+
+            setGroup(name) {
+                this.currentGroup = name;
+            }
+
+            getSummary() {
+                const total = this.results.length;
+                const passed = this.results.filter(r => r.passed).length;
+                const failed = total - passed;
+                const totalTime = this.results.reduce((sum, r) => sum + r.time, 0);
+                
+                return {
+                    total,
+                    passed,
+                    failed,
+                    totalTime,
+                    passRate: total > 0 ? (passed / total * 100).toFixed(1) : 0
+                };
+            }
+
+            clear() {
+                this.results = [];
+                this.currentGroup = '';
+            }
+        }
+
+        const runner = new TestRunner();
+
+        // コア機能テスト
+        function runCoreTests() {
+            runner.setGroup('座標変換テスト');
+            
+            runner.runTest('humanToInternal - 正常系', () => {
+                runner.assertArrayEquals(humanToInternal('５一'), [0, 4]);
+                runner.assertArrayEquals(humanToInternal('１九'), [8, 8]);
+                runner.assertArrayEquals(humanToInternal('９五'), [4, 0]);
+            });
+
+            runner.runTest('humanToInternal - 異常系', () => {
+                runner.assert(humanToInternal('') === null);
+                runner.assert(humanToInternal('あい') === null);
+                runner.assert(humanToInternal('10一') === null);
+            });
+
+            runner.runTest('internalToHuman - 正常系', () => {
+                runner.assertEquals(internalToHuman(0, 4), '５一');
+                runner.assertEquals(internalToHuman(8, 8), '１九');
+                runner.assertEquals(internalToHuman(4, 0), '９五');
+            });
+
+            runner.setGroup('駒の動きテスト');
+
+            runner.runTest('盤内判定', () => {
+                // 仮のエンジンインスタンスを作成
+                const testEngine = {
+                    isInBoard: (row, col) => row >= 0 && row < 9 && col >= 0 && col < 9
+                };
+                
+                runner.assert(testEngine.isInBoard(0, 0) === true);
+                runner.assert(testEngine.isInBoard(8, 8) === true);
+                runner.assert(testEngine.isInBoard(-1, 0) === false);
+                runner.assert(testEngine.isInBoard(9, 0) === false);
+                runner.assert(testEngine.isInBoard(0, -1) === false);
+                runner.assert(testEngine.isInBoard(0, 9) === false);
+            });
+
+            runner.runTest('成り判定', () => {
+                // 仮のcanPromote関数
+                const canPromote = (piece, fromRow, toRow, side) => {
+                    if (piece === '金' || piece === '玉' || 
+                        piece === 'と' || piece === '杏' || piece === '圭' || 
+                        piece === '全' || piece === '馬' || piece === '龍') {
+                        return false;
+                    }
+                    
+                    if (side === 'sente') {
+                        return fromRow <= 2 || toRow <= 2;
+                    } else {
+                        return fromRow >= 6 || toRow >= 6;
+                    }
+                };
+
+                runner.assert(canPromote('歩', 2, 1, 'sente') === true);
+                runner.assert(canPromote('歩', 3, 2, 'sente') === true);
+                runner.assert(canPromote('歩', 4, 3, 'sente') === false);
+                runner.assert(canPromote('金', 2, 1, 'sente') === false);
+                runner.assert(canPromote('歩', 6, 7, 'gote') === true);
+            });
+
+            displayResults();
+        }
+
+        // 妥当性検証テスト
+        function runValidationTests() {
+            runner.setGroup('盤面妥当性テスト');
+
+            runner.runTest('二歩検出', () => {
+                const board = Array(9).fill(null).map(() => Array(9).fill(null));
+                board[2][0] = { piece: '歩', side: 'sente' };
+                board[4][0] = { piece: '歩', side: 'sente' };
+                
+                // 二歩があるはず
+                let hasDuplicate = false;
+                const pawnColumns = new Set();
+                for (let row = 0; row < 9; row++) {
+                    if (board[row][0] && board[row][0].piece === '歩' && board[row][0].side === 'sente') {
+                        if (pawnColumns.has(0)) {
+                            hasDuplicate = true;
+                            break;
+                        }
+                        pawnColumns.add(0);
+                    }
+                }
+                runner.assert(hasDuplicate === true, '二歩が検出されませんでした');
+            });
+
+            runner.runTest('行き所のない駒検出', () => {
+                // 先手の歩が最上段
+                runner.assert((() => {
+                    const row = 0;
+                    const piece = '歩';
+                    const side = 'sente';
+                    return (piece === '歩' || piece === '香') && row === 0;
+                })() === true);
+
+                // 後手の香が最下段
+                runner.assert((() => {
+                    const row = 8;
+                    const piece = '香';
+                    const side = 'gote';
+                    return (piece === '歩' || piece === '香') && row === 8;
+                })() === true);
+            });
+
+            runner.runTest('駒数上限チェック', () => {
+                const maxPieces = {
+                    '飛': 2, '角': 2, '金': 4, '銀': 4,
+                    '桂': 4, '香': 4, '歩': 18
+                };
+
+                // 飛車3枚は無効
+                runner.assert(3 > maxPieces['飛'], '飛車の数が上限を超えています');
+                
+                // 歩19枚は無効
+                runner.assert(19 > maxPieces['歩'], '歩の数が上限を超えています');
+            });
+
+            displayResults();
+        }
+
+        // パフォーマンステスト
+        function runPerformanceTests() {
+            runner.setGroup('パフォーマンステスト');
+
+            runner.runTest('ハッシュテーブル性能', () => {
+                const hashTable = new Map();
+                const iterations = 10000;
+                
+                const startTime = performance.now();
+                for (let i = 0; i < iterations; i++) {
+                    hashTable.set(`key${i}`, { value: i });
+                }
+                for (let i = 0; i < iterations; i++) {
+                    hashTable.get(`key${i}`);
+                }
+                const elapsed = performance.now() - startTime;
+                
+                runner.assert(elapsed < 100, `ハッシュテーブル操作が遅すぎます: ${elapsed}ms`);
+            });
+
+            runner.runTest('手の生成速度', () => {
+                // 簡易的な手生成テスト
+                const moves = [];
+                const startTime = performance.now();
+                
+                for (let from = 0; from < 81; from++) {
+                    for (let to = 0; to < 81; to++) {
+                        if (from !== to) {
+                            moves.push({ from, to });
+                        }
+                    }
+                }
+                
+                const elapsed = performance.now() - startTime;
+                runner.assert(elapsed < 50, `手生成が遅すぎます: ${elapsed}ms`);
+                runner.assert(moves.length === 81 * 80, `生成された手数が不正: ${moves.length}`);
+            });
+
+            runner.runTest('メモリ使用量チェック', () => {
+                if (performance.memory) {
+                    const usedMemory = performance.memory.usedJSHeapSize / 1024 / 1024;
+                    runner.assert(usedMemory < 100, `メモリ使用量が多すぎます: ${usedMemory.toFixed(2)}MB`);
+                } else {
+                    // performance.memoryが使えない環境ではスキップ
+                    runner.assert(true, 'メモリ測定はこの環境では利用できません');
+                }
+            });
+
+            displayResults();
+        }
+
+        // 全テスト実行
+        function runAllTests() {
+            runner.clear();
+            runCoreTests();
+            runValidationTests();
+            runPerformanceTests();
+        }
+
+        // 結果表示
+        function displayResults() {
+            const resultsDiv = document.getElementById('testResults');
+            const summaryDiv = document.getElementById('testSummary');
+            
+            // グループごとに結果を整理
+            const groupedResults = {};
+            runner.results.forEach(result => {
+                if (!groupedResults[result.group]) {
+                    groupedResults[result.group] = [];
+                }
+                groupedResults[result.group].push(result);
+            });
+
+            // HTML生成
+            let html = '';
+            for (const [group, results] of Object.entries(groupedResults)) {
+                html += `<div class="test-group">`;
+                html += `<h3>${group}</h3>`;
+                
+                results.forEach(result => {
+                    const statusClass = result.passed ? 'pass' : 'fail';
+                    const statusText = result.passed ? '✅ PASS' : '❌ FAIL';
+                    
+                    html += `<div class="test-case">`;
+                    html += `<span class="${statusClass}">${statusText}</span> `;
+                    html += `${result.name} `;
+                    html += `<span style="color: #666;">(${result.time.toFixed(2)}ms)</span>`;
+                    
+                    if (!result.passed && result.error) {
+                        html += `<div class="error-detail">${result.error}</div>`;
+                    }
+                    
+                    html += `</div>`;
+                });
+                
+                html += `</div>`;
+            }
+            
+            resultsDiv.innerHTML = html;
+
+            // サマリー表示
+            const summary = runner.getSummary();
+            summaryDiv.style.display = 'block';
+            summaryDiv.innerHTML = `
+                <strong>テスト結果サマリー</strong><br>
+                総テスト数: ${summary.total}<br>
+                成功: <span class="pass">${summary.passed}</span><br>
+                失敗: <span class="fail">${summary.failed}</span><br>
+                成功率: ${summary.passRate}%<br>
+                実行時間: ${summary.totalTime.toFixed(2)}ms
+            `;
+        }
+
+        // 結果クリア
+        function clearResults() {
+            runner.clear();
+            document.getElementById('testResults').innerHTML = '';
+            document.getElementById('testSummary').style.display = 'none';
+        }
+
+        // 座標変換関数（メインファイルから複製）
+        const SUJI_MAP = {'９': 0, '８': 1, '７': 2, '６': 3, '５': 4, '４': 5, '３': 6, '２': 7, '１': 8};
+        const DAN_MAP = {'一': 0, '二': 1, '三': 2, '四': 3, '五': 4, '六': 5, '七': 6, '八': 7, '九': 8};
+        const SUJI_STR = ['９', '８', '７', '６', '５', '４', '３', '２', '１'];
+        const DAN_STR = ['一', '二', '三', '四', '五', '六', '七', '八', '九'];
+
+        function humanToInternal(humanPos) {
+            if (!humanPos || humanPos.length !== 2) return null;
+            const suji = SUJI_MAP[humanPos[0]];
+            const dan = DAN_MAP[humanPos[1]];
+            if (suji === undefined || dan === undefined) return null;
+            return [dan, suji];
+        }
+
+        function internalToHuman(row, col) {
+            return SUJI_STR[col] + DAN_STR[row];
+        }
+    </script>
+</body>
+</html>

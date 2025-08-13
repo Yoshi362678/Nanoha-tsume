@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>1手詰テスト - なのは詰将棋エンジン</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            margin: 20px;
+            background: #f0f0f0;
+        }
+        .test-container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+        }
+        .problem {
+            background: #f8f9fa;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 5px;
+            border-left: 4px solid #007bff;
+        }
+        .result {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+        }
+        .success {
+            background: #d4edda;
+            color: #155724;
+        }
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        .pending {
+            background: #fff3cd;
+            color: #856404;
+        }
+        button {
+            padding: 10px 20px;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        pre {
+            background: #f4f4f4;
+            padding: 10px;
+            border-radius: 5px;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>1手詰テスト - なのは詰将棋エンジン</h1>
+        
+        <div class="problem">
+            <h3>問題1：頭金</h3>
+            <p><strong>配置：</strong></p>
+            <ul>
+                <li>先手：▲５三歩</li>
+                <li>後手：△５一玉</li>
+                <li>持駒：金１枚</li>
+            </ul>
+            <p><strong>正解：</strong>▲５二金打</p>
+            <button onclick="testProblem1()">テスト実行</button>
+            <div id="result1" class="result pending">テスト待機中...</div>
+        </div>
+
+        <div class="problem">
+            <h3>デバッグログ</h3>
+            <pre id="debugLog">ログがここに表示されます...</pre>
+        </div>
+    </div>
+
+    <script>
+        // TsumeShogi エンジンをインポート（簡略版）
+        class TsumeShogi {
+            constructor() {
+                this.board = Array(9).fill(null).map(() => Array(9).fill(null));
+                this.mochiGoma = { sente: {}, gote: {} };
+                this.debugMode = true;
+                this.debugLogs = [];
+            }
+
+            // 座標変換
+            humanToInternal(pos) {
+                const col = 9 - parseInt(pos[0]);
+                const row = pos.charCodeAt(1) - '１'.charCodeAt(0);
+                return [row, col];
+            }
+
+            internalToHuman(row, col) {
+                const colStr = String(9 - col);
+                const rowStr = String.fromCharCode('１'.charCodeAt(0) + row);
+                return colStr + rowStr;
+            }
+
+            // 盤面設定
+            setupBoard(pieces) {
+                // 盤面をクリア
+                this.board = Array(9).fill(null).map(() => Array(9).fill(null));
+                this.mochiGoma = { sente: {}, gote: {} };
+
+                // 駒を配置
+                for (const piece of pieces) {
+                    const [row, col] = this.humanToInternal(piece.pos);
+                    this.board[row][col] = {
+                        piece: piece.piece,
+                        side: piece.side
+                    };
+                }
+            }
+
+            // 詰み探索（簡略版）
+            solve() {
+                this.debugLogs = [];
+                this.log('探索開始');
+                
+                // 王手できる手を生成
+                const checks = this.generateChecks();
+                this.log(`王手可能な手: ${checks.length}手`);
+                
+                for (const move of checks) {
+                    this.log(`試行: ${this.formatMove(move)}`);
+                    
+                    // 手を実行
+                    const backup = this.makeMove(move);
+                    
+                    // 後手が逃げられるか確認
+                    const evasions = this.generateEvasions();
+                    this.log(`  後手の応手: ${evasions.length}手`);
+                    
+                    // 戻す
+                    this.unmakeMove(move, backup);
+                    
+                    if (evasions.length === 0) {
+                        this.log(`詰み発見: ${this.formatMove(move)}`);
+                        return move;
+                    }
+                }
+                
+                this.log('詰みなし');
+                return null;
+            }
+
+            // 王手生成
+            generateChecks() {
+                const checks = [];
+                
+                // 持駒から打つ
+                for (const [piece, count] of Object.entries(this.mochiGoma.sente)) {
+                    if (count > 0) {
+                        for (let row = 0; row < 9; row++) {
+                            for (let col = 0; col < 9; col++) {
+                                if (!this.board[row][col]) {
+                                    const move = {
+                                        type: 'drop',
+                                        piece: piece,
+                                        to: this.internalToHuman(row, col)
+                                    };
+                                    
+                                    // この手で王手になるか確認
+                                    const backup = this.makeMove(move);
+                                    if (this.isCheck('gote')) {
+                                        checks.push(move);
+                                    }
+                                    this.unmakeMove(move, backup);
+                                }
+                            }
+                        }
+                    }
+                }
+                
+                return checks;
+            }
+
+            // 王手回避
+            generateEvasions() {
+                const evasions = [];
+                
+                // 玉を探す
+                let kingPos = null;
+                for (let row = 0; row < 9; row++) {
+                    for (let col = 0; col < 9; col++) {
+                        const piece = this.board[row][col];
+                        if (piece && piece.piece === '玉' && piece.side === 'gote') {
+                            kingPos = [row, col];
+                            break;
+                        }
+                    }
+                }
+                
+                if (!kingPos) return evasions;
+                
+                // 玉の移動を試す（8方向）
+                const dirs = [
+                    [-1, -1], [-1, 0], [-1, 1],
+                    [0, -1],           [0, 1],
+                    [1, -1], [1, 0], [1, 1]
+                ];
+                
+                for (const [dr, dc] of dirs) {
+                    const newRow = kingPos[0] + dr;
+                    const newCol = kingPos[1] + dc;
+                    
+                    if (newRow >= 0 && newRow < 9 && newCol >= 0 && newCol < 9) {
+                        const target = this.board[newRow][newCol];
+                        if (!target || target.side === 'sente') {
+                            const move = {
+                                type: 'move',
+                                from: this.internalToHuman(kingPos[0], kingPos[1]),
+                                to: this.internalToHuman(newRow, newCol),
+                                piece: '玉'
+                            };
+                            
+                            // 移動後も王手されていないか確認
+                            const backup = this.makeMove(move);
+                            if (!this.isCheck('gote')) {
+                                evasions.push(move);
+                            }
+                            this.unmakeMove(move, backup);
+                        }
+                    }
+                }
+                
+                return evasions;
+            }
+
+            // 王手判定
+            isCheck(side) {
+                // 玉を探す
+                let kingPos = null;
+                for (let row = 0; row < 9; row++) {
+                    for (let col = 0; col < 9; col++) {
+                        const piece = this.board[row][col];
+                        if (piece && piece.piece === '玉' && piece.side === side) {
+                            kingPos = [row, col];
+                            break;
+                        }
+                    }
+                }
+                
+                if (!kingPos) return false;
+                
+                // 相手の駒から攻撃されているか確認
+                const enemySide = side === 'sente' ? 'gote' : 'sente';
+                for (let row = 0; row < 9; row++) {
+                    for (let col = 0; col < 9; col++) {
+                        const piece = this.board[row][col];
+                        if (piece && piece.side === enemySide) {
+                            if (this.canAttack(row, col, kingPos[0], kingPos[1], piece)) {
+                                return true;
+                            }
+                        }
+                    }
+                }
+                
+                return false;
+            }
+
+            // 攻撃可能か判定（簡略版）
+            canAttack(fromRow, fromCol, toRow, toCol, piece) {
+                const dr = toRow - fromRow;
+                const dc = toCol - fromCol;
+                
+                // 金の動き
+                if (piece.piece === '金') {
+                    if (piece.side === 'sente') {
+                        // 先手の金：前、斜め前、横
+                        if ((Math.abs(dr) <= 1 && Math.abs(dc) <= 1) && 
+                            !(dr === 1 && Math.abs(dc) === 1)) {
+                            return true;
+                        }
+                    }
+                }
+                
+                // 歩の動き
+                if (piece.piece === '歩') {
+                    if (piece.side === 'sente') {
+                        return dr === -1 && dc === 0;
+                    }
+                }
+                
+                return false;
+            }
+
+            // 手を実行
+            makeMove(move) {
+                const backup = {
+                    board: null,
+                    mochiGoma: JSON.parse(JSON.stringify(this.mochiGoma))
+                };
+                
+                if (move.type === 'drop') {
+                    const [row, col] = this.humanToInternal(move.to);
+                    this.board[row][col] = { 
+                        piece: move.piece, 
+                        side: move.side || 'sente' 
+                    };
+                    
+                    if (this.mochiGoma.sente[move.piece]) {
+                        this.mochiGoma.sente[move.piece]--;
+                        if (this.mochiGoma.sente[move.piece] === 0) {
+                            delete this.mochiGoma.sente[move.piece];
+                        }
+                    }
+                } else {
+                    const [fromRow, fromCol] = this.humanToInternal(move.from);
+                    const [toRow, toCol] = this.humanToInternal(move.to);
+                    
+                    backup.board = this.board[toRow][toCol];
+                    this.board[toRow][toCol] = this.board[fromRow][fromCol];
+                    this.board[fromRow][fromCol] = null;
+                }
+                
+                return backup;
+            }
+
+            // 手を戻す
+            unmakeMove(move, backup) {
+                if (move.type === 'drop') {
+                    const [row, col] = this.humanToInternal(move.to);
+                    this.board[row][col] = null;
+                } else {
+                    const [fromRow, fromCol] = this.humanToInternal(move.from);
+                    const [toRow, toCol] = this.humanToInternal(move.to);
+                    
+                    this.board[fromRow][fromCol] = this.board[toRow][toCol];
+                    this.board[toRow][toCol] = backup.board;
+                }
+                
+                this.mochiGoma = backup.mochiGoma;
+            }
+
+            // 手の表記
+            formatMove(move) {
+                if (move.type === 'drop') {
+                    return `▲${move.to}${move.piece}打`;
+                } else {
+                    return `▲${move.to}${move.piece}`;
+                }
+            }
+
+            // デバッグログ
+            log(message) {
+                this.debugLogs.push(message);
+                console.log(message);
+            }
+        }
+
+        // テスト実行
+        function testProblem1() {
+            const engine = new TsumeShogi();
+            const resultDiv = document.getElementById('result1');
+            const debugDiv = document.getElementById('debugLog');
+            
+            try {
+                // 盤面設定
+                engine.setupBoard([
+                    { pos: '５三', piece: '歩', side: 'sente' },
+                    { pos: '５一', piece: '玉', side: 'gote' }
+                ]);
+                engine.mochiGoma.sente['金'] = 1;
+                
+                // 探索実行
+                const result = engine.solve();
+                
+                // デバッグログ表示
+                debugDiv.textContent = engine.debugLogs.join('\n');
+                
+                // 結果判定
+                if (result) {
+                    const moveStr = engine.formatMove(result);
+                    if (moveStr === '▲５二金打') {
+                        resultDiv.className = 'result success';
+                        resultDiv.textContent = `✅ 正解！ ${moveStr}`;
+                    } else {
+                        resultDiv.className = 'result error';
+                        resultDiv.textContent = `❌ 不正解: ${moveStr} (正解: ▲５二金打)`;
+                    }
+                } else {
+                    resultDiv.className = 'result error';
+                    resultDiv.textContent = '❌ 詰みが見つかりませんでした';
+                }
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.textContent = `エラー: ${error.message}`;
+                debugDiv.textContent = error.stack;
+            }
+        }
+    </script>
+</body>
+</html>

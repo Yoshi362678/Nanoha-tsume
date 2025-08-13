@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>3手詰め合駒テスト</title>
+</head>
+<body>
+    <h1>3手詰め合駒問題テスト</h1>
+    <div id="result"></div>
+    
+    <script>
+        // Nanoha-tsume.htmlから必要な部分をコピー
+        const SUJI_MAP = {'９': 0, '８': 1, '７': 2, '６': 3, '５': 4, '４': 5, '３': 6, '２': 7, '１': 8};
+        const DAN_MAP = {'一': 0, '二': 1, '三': 2, '四': 3, '五': 4, '六': 5, '七': 6, '八': 7, '九': 8};
+        const SUJI_STR = ['９', '８', '７', '６', '５', '４', '３', '２', '１'];
+        const DAN_STR = ['一', '二', '三', '四', '五', '六', '七', '八', '九'];
+
+        function humanToInternal(humanPos) {
+            if (!humanPos || humanPos.length !== 2) return null;
+            const suji = SUJI_MAP[humanPos[0]];
+            const dan = DAN_MAP[humanPos[1]];
+            if (suji === undefined || dan === undefined) return null;
+            return [dan, suji];
+        }
+
+        function internalToHuman(row, col) {
+            return SUJI_STR[col] + DAN_STR[row];
+        }
+
+        // テスト実行
+        console.log('=== 3手詰め合駒問題テスト開始 ===');
+        console.log('配置: △４一玉、△４二歩、▲２二飛、▲５三歩、▲持銀1');
+        console.log('正解: ▲２一飛成→△３一歩打→▲５二銀打');
+        console.log('');
+        
+        // 簡易的なテストのため、エンジンの一部機能のみ実装
+        const testBoard = Array(9).fill(null).map(() => Array(9).fill(null));
+        
+        // 配置設定
+        // △４一玉 = [0, 5]
+        testBoard[0][5] = {piece: '玉', side: 'gote'};
+        // △４二歩 = [1, 5]  
+        testBoard[1][5] = {piece: '歩', side: 'gote'};
+        // ▲２二飛 = [1, 7]
+        testBoard[1][7] = {piece: '飛', side: 'sente'};
+        // ▲５三歩 = [2, 4]
+        testBoard[2][4] = {piece: '歩', side: 'sente'};
+        
+        const mochiGoma = {
+            sente: {'銀': 1},
+            gote: {}
+        };
+        
+        // 盤面表示
+        console.log('盤面:');
+        for (let row = 0; row < 9; row++) {
+            let line = '';
+            for (let col = 0; col < 9; col++) {
+                const piece = testBoard[row][col];
+                if (piece) {
+                    const mark = piece.side === 'sente' ? '▲' : '△';
+                    line += mark + piece.piece + ' ';
+                } else {
+                    line += '＿＿ ';
+                }
+            }
+            console.log((row + 1) + '段: ' + line);
+        }
+        console.log('');
+        console.log('先手持駒: 銀1');
+        
+        // 結果表示
+        const resultDiv = document.getElementById('result');
+        resultDiv.innerHTML = `
+            <h2>テスト配置</h2>
+            <p>△４一玉、△４二歩、▲２二飛、▲５三歩、▲持銀1</p>
+            <h2>正解手順</h2>
+            <p>▲２一飛成→△３一歩打（合駒）→▲５二銀打</p>
+            <h2>テスト内容</h2>
+            <ol>
+                <li>▲２一飛成と▲２一飛不成の両方の手が生成されるか</li>
+                <li>△３一歩打（合駒）が正しく生成されるか</li>
+                <li>無限ループに入らないか</li>
+            </ol>
+            <p><strong>コンソールログを確認してください</strong></p>
+            <p>※このテストは配置確認のみで、実際のエンジンテストは本体で行います</p>
+        `;
+        
+        console.log('=== テスト配置確認完了 ===');
+        console.log('次のステップ: Nanoha-tsume.htmlで実際にこの配置を設定して「詰みを解く」を実行');
+    </script>
+</body>
+</html>

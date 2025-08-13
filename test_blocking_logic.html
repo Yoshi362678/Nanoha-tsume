@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>合駒ロジックテスト</title>
+    <style>
+        .board {
+            display: inline-block;
+            border: 2px solid black;
+        }
+        .cell {
+            display: inline-block;
+            width: 40px;
+            height: 40px;
+            border: 1px solid gray;
+            text-align: center;
+            line-height: 40px;
+        }
+        .highlight {
+            background-color: yellow;
+        }
+        .attack-path {
+            background-color: lightcoral;
+        }
+    </style>
+</head>
+<body>
+    <h1>合駒ロジックテスト</h1>
+    <div id="board"></div>
+    <pre id="output"></pre>
+    
+    <script>
+        function humanToInternal(pos) {
+            const col = 9 - parseInt(pos[0]);
+            const rowMap = {
+                '一': 0, '二': 1, '三': 2, '四': 3, '五': 4,
+                '六': 5, '七': 6, '八': 7, '九': 8
+            };
+            const row = rowMap[pos[1]];
+            return [row, col];
+        }
+        
+        function internalToHuman(row, col) {
+            const colStr = String(9 - col);
+            const rowStrs = ['一', '二', '三', '四', '五', '六', '七', '八', '九'];
+            return colStr + rowStrs[row];
+        }
+        
+        // ボード描画
+        function drawBoard() {
+            const board = document.getElementById('board');
+            const positions = {
+                '５一': '玉',
+                '４二': '銀',
+                '２一': '龍'  // 飛車が成った後
+            };
+            
+            let html = '<div class="board">';
+            for (let row = 0; row < 9; row++) {
+                html += '<div>';
+                for (let col = 0; col < 9; col++) {
+                    const pos = internalToHuman(row, col);
+                    const piece = positions[pos] || '';
+                    let className = 'cell';
+                    
+                    // 王手の経路をハイライト
+                    if ((pos === '２一' || pos === '３一' || pos === '４一' || pos === '５一')) {
+                        className += ' attack-path';
+                    }
+                    if (pos === '３一') {
+                        className += ' highlight';
+                    }
+                    
+                    html += `<span class="${className}">${piece}</span>`;
+                }
+                html += '</div>';
+            }
+            html += '</div>';
+            board.innerHTML = html;
+        }
+        
+        // 合駒ロジックのシミュレーション
+        function simulateBlocking() {
+            const output = document.getElementById('output');
+            let log = '';
+            
+            // 状況設定
+            const kingPos = humanToInternal('５一');  // [0, 4]
+            const attackerPos = humanToInternal('２一');  // [0, 7]
+            const attackPiece = '龍';
+            
+            log += "=== 合駒生成シミュレーション ===\n\n";
+            log += `後手玉: ${internalToHuman(kingPos[0], kingPos[1])} = [${kingPos[0]}, ${kingPos[1]}]\n`;
+            log += `攻撃駒: ${attackPiece} at ${internalToHuman(attackerPos[0], attackerPos[1])} = [${attackerPos[0]}, ${attackerPos[1]}]\n`;
+            
+            // 飛び駒チェック
+            const rangedPieces = ['飛', '龍', '角', '馬', '香'];
+            log += `\n飛び駒チェック: ${attackPiece} ∈ ${JSON.stringify(rangedPieces)} ? ${rangedPieces.includes(attackPiece)}\n`;
+            
+            if (rangedPieces.includes(attackPiece)) {
+                log += "\n王手の線上のマスを探す:\n";
+                const dr = Math.sign(kingPos[0] - attackerPos[0]);
+                const dc = Math.sign(kingPos[1] - attackerPos[1]);
+                log += `方向: dr=${dr}, dc=${dc}\n`;
+                
+                let r = attackerPos[0] + dr;
+                let c = attackerPos[1] + dc;
+                
+                log += "\n合駒可能位置:\n";
+                while (r !== kingPos[0] || c !== kingPos[1]) {
+                    const blockPos = internalToHuman(r, c);
+                    log += `  ${blockPos} [${r}, ${c}]`;
+                    
+                    if (blockPos === '３一') {
+                        log += " ← ここに歩を打てば合駒になる！";
+                    }
+                    log += "\n";
+                    
+                    r += dr;
+                    c += dc;
+                }
+                
+                // canGoteUsePiece('歩')のシミュレーション
+                log += "\ncanGoteUsePiece('歩'):\n";
+                const maxPieces = 18;
+                const boardCount = 0;  // 盤上に歩なし
+                const senteHandCount = 0;  // 先手は歩を持っていない
+                const available = maxPieces - boardCount - senteHandCount;
+                log += `  最大: ${maxPieces}, 盤上: ${boardCount}, 先手持: ${senteHandCount}\n`;
+                log += `  → 使用可能: ${available} > 0 = true\n`;
+                
+                // canDropGote('歩', 0, 5)のシミュレーション
+                log += "\ncanDropGote('歩', 0, 5) [３一に歩を打つ]:\n";
+                log += `  二歩チェック: 3筋（col=5）に歩があるか? → なし\n`;
+                log += `  行き所チェック: row=0（一段）、歩は打てる\n`;
+                log += `  → true\n`;
+                
+                log += "\n結論: △３一歩打が生成されるべき\n";
+            }
+            
+            output.textContent = log;
+        }
+        
+        drawBoard();
+        simulateBlocking();
+    </script>
+</body>
+</html>

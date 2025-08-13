@@ -1,0 +1,38 @@
+# Backup files
+*backup*.html
+*_backup*.html
+*.bak
+
+# Test files (optional - uncomment if you want to exclude tests)
+# test*.html
+# unit-tests.html
+
+# Development logs (keep for history)
+# 開発ログ*.md
+# デバッグ*.md
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Temporary files
+*.tmp
+*.temp
+nul
+
+# Node modules (if ever added)
+node_modules/
+package-lock.json
+
+# Build output (if ever added)
+dist/
+build/
+out/

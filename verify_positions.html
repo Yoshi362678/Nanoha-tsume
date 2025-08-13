@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>位置確認</title>
+</head>
+<body>
+    <h1>位置確認</h1>
+    <pre id="output"></pre>
+    
+    <script>
+        // 座標変換
+        function humanToInternal(pos) {
+            const col = 9 - parseInt(pos[0]);
+            const rowMap = {
+                '一': 0, '二': 1, '三': 2, '四': 3, '五': 4,
+                '六': 5, '七': 6, '八': 7, '九': 8
+            };
+            const row = rowMap[pos[1]];
+            return [row, col];
+        }
+        
+        function internalToHuman(row, col) {
+            const colStr = String(9 - col);
+            const rowStrs = ['一', '二', '三', '四', '五', '六', '七', '八', '九'];
+            return colStr + rowStrs[row];
+        }
+        
+        const output = document.getElementById('output');
+        
+        // 各駒の位置確認
+        const positions = {
+            '５一玉': humanToInternal('５一'),
+            '４二銀': humanToInternal('４二'),
+            '２二飛': humanToInternal('２二'),
+            '２一飛成後': humanToInternal('２一'),
+            '３一歩合': humanToInternal('３一')
+        };
+        
+        output.textContent += "駒の位置（内部座標）:\n";
+        for (const [desc, pos] of Object.entries(positions)) {
+            output.textContent += `${desc}: [row=${pos[0]}, col=${pos[1]}]\n`;
+        }
+        
+        output.textContent += "\n飛車が２一から５一玉への王手:\n";
+        const rook21 = humanToInternal('２一');
+        const king51 = humanToInternal('５一');
+        
+        output.textContent += `飛車: [${rook21[0]}, ${rook21[1]}]\n`;
+        output.textContent += `玉: [${king51[0]}, ${king51[1]}]\n`;
+        output.textContent += `同じ行（横の王手）: row=${rook21[0]} == row=${king51[0]} ? ${rook21[0] === king51[0]}\n`;
+        
+        output.textContent += "\n王手の線上のマス:\n";
+        const dr = Math.sign(king51[0] - rook21[0]);
+        const dc = Math.sign(king51[1] - rook21[1]);
+        output.textContent += `方向: dr=${dr}, dc=${dc}\n`;
+        
+        let r = rook21[0] + dr;
+        let c = rook21[1] + dc;
+        let path = [];
+        while (r !== king51[0] || c !== king51[1]) {
+            path.push(internalToHuman(r, c));
+            r += dr;
+            c += dc;
+        }
+        output.textContent += `経路: ${path.join(' → ')}\n`;
+        
+        output.textContent += "\n３一は王手の線上にあるか?\n";
+        output.textContent += `３一の位置: [${positions['３一歩合'][0]}, ${positions['３一歩合'][1]}]\n`;
+        output.textContent += `王手の線上: ${path.includes('３一') ? 'YES' : 'NO'}\n`;
+    </script>
+</body>
+</html>

@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>後手持駒テスト</title>
+</head>
+<body>
+    <h1>後手の持駒確認テスト</h1>
+    <pre id="output"></pre>
+    
+    <script>
+        // canGoteUsePieceの実装を確認
+        function testCanGoteUsePiece() {
+            const output = document.getElementById('output');
+            
+            // 設定: 3手詰め問題
+            // 盤上: △５一玉、△４二銀、▲２二飛
+            // 先手持駒: 銀1枚
+            
+            const maxPieces = {
+                '飛': 2, '角': 2, '金': 4, '銀': 4,
+                '桂': 4, '香': 4, '歩': 18
+            };
+            
+            // 歩の場合
+            let boardCount = 0;  // 盤上に歩なし
+            let senteHandCount = 0;  // 先手は歩を持っていない
+            let available = maxPieces['歩'] - boardCount - senteHandCount;
+            
+            output.textContent += "歩の計算:\n";
+            output.textContent += `  最大枚数: ${maxPieces['歩']}\n`;
+            output.textContent += `  盤上の歩: ${boardCount}\n`;
+            output.textContent += `  先手の持ち歩: ${senteHandCount}\n`;
+            output.textContent += `  後手が使える歩: ${available}\n`;
+            output.textContent += `  canGoteUsePiece('歩'): ${available > 0}\n\n`;
+            
+            // 銀の場合
+            boardCount = 1;  // 盤上に後手の銀1枚
+            senteHandCount = 1;  // 先手は銀1枚持っている
+            available = maxPieces['銀'] - boardCount - senteHandCount;
+            
+            output.textContent += "銀の計算:\n";
+            output.textContent += `  最大枚数: ${maxPieces['銀']}\n`;
+            output.textContent += `  盤上の銀: ${boardCount}\n`;
+            output.textContent += `  先手の持ち銀: ${senteHandCount}\n`;
+            output.textContent += `  後手が使える銀: ${available}\n`;
+            output.textContent += `  canGoteUsePiece('銀'): ${available > 0}\n\n`;
+            
+            // 問題の診断
+            output.textContent += "問題診断:\n";
+            if (available > 0) {
+                output.textContent += "✓ 後手は歩を持駒として使えるはず\n";
+            } else {
+                output.textContent += "✗ 後手は歩を持駒として使えない（これは誤り）\n";
+            }
+            
+            // canDropGoteのチェック
+            output.textContent += "\ncanDropGote('歩', 0, 5)のチェック (３一に歩を打つ):\n";
+            output.textContent += "  二歩チェック: 1筋に歩があるか? → なし\n";
+            output.textContent += "  行き所チェック: row=0（一段）なので歩は打てる\n";
+            output.textContent += "  → canDropGote: true\n";
+        }
+        
+        testCanGoteUsePiece();
+    </script>
+</body>
+</html>

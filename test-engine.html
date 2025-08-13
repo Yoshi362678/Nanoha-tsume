@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>詰将棋エンジンテスト</title>
+</head>
+<body>
+    <h1>詰将棋エンジンテスト</h1>
+    <div id="results"></div>
+    
+    <script>
+        // Extract just the TsumeShogi class and necessary functions from main file
+        // This will be populated from the main file
+    </script>
+    
+    <script>
+        function runTests() {
+            console.log('=== 詰将棋エンジンテスト開始 ===');
+            
+            // Test 1: Simple 1-move mate
+            console.log('\n--- Test 1: 1手詰め ---');
+            const engine1 = new TsumeShogi();
+            engine1.decodePosition("△４一玉 ▲３一飛");
+            console.log('Position set up complete');
+            
+            const startTime1 = Date.now();
+            const result1 = engine1.solveTsume();
+            const elapsed1 = Date.now() - startTime1;
+            
+            console.log('結果:', result1);
+            console.log('実行時間:', elapsed1 + 'ms');
+            console.log('期待値: ▲３一飛成 での詰み');
+            
+            // Test 2: Previous problematic case
+            console.log('\n--- Test 2: 以前の問題ケース ---');
+            const engine2 = new TsumeShogi();
+            engine2.decodePosition("△５一玉 ▲６二金 ▲５二金");
+            
+            const startTime2 = Date.now();
+            const result2 = engine2.solveTsume();
+            const elapsed2 = Date.now() - startTime2;
+            
+            console.log('結果:', result2);
+            console.log('実行時間:', elapsed2 + 'ms');
+            console.log('期待値: ▲４二金 での詰み');
+            
+            console.log('\n=== テスト完了 ===');
+        }
+        
+        // Auto-run tests when page loads
+        window.onload = runTests;
+    </script>
+</body>
+</html>
