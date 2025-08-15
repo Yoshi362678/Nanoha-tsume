@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>3手詰め合駒問題テスト</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            border-bottom: 2px solid #4CAF50;
+            padding-bottom: 10px;
+        }
+        .test-info {
+            background: #e8f5e9;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+        .board-preview {
+            display: inline-block;
+            background: #faebd7;
+            border: 2px solid #8b4513;
+            padding: 10px;
+            margin: 20px 0;
+        }
+        .board-grid {
+            display: grid;
+            grid-template-columns: repeat(9, 40px);
+            grid-template-rows: repeat(9, 40px);
+            gap: 1px;
+            background: #8b4513;
+        }
+        .cell {
+            background: #fff8dc;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            font-weight: bold;
+        }
+        .piece-sente {
+            color: #000;
+        }
+        .piece-gote {
+            color: #dc143c;
+        }
+        .result-box {
+            margin: 20px 0;
+            padding: 15px;
+            border-radius: 5px;
+        }
+        .success {
+            background: #c8e6c9;
+            border-left: 4px solid #4CAF50;
+        }
+        .error {
+            background: #ffcdd2;
+            border-left: 4px solid #f44336;
+        }
+        .warning {
+            background: #fff9c4;
+            border-left: 4px solid #ff9800;
+        }
+        .log-output {
+            background: #263238;
+            color: #aed581;
+            padding: 15px;
+            border-radius: 5px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            max-height: 400px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+        }
+        button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 5px;
+        }
+        button:hover {
+            background: #45a049;
+        }
+        .step-guide {
+            background: #f0f4c3;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+        .step-guide ol {
+            margin: 10px 0 0 20px;
+        }
+        .step-guide li {
+            margin: 5px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎯 3手詰め合駒問題テスト</h1>
+        
+        <div class="test-info">
+            <h2>テスト問題</h2>
+            <p><strong>配置：</strong></p>
+            <ul>
+                <li>△４一玉（後手玉）</li>
+                <li>△４二歩（後手の歩）</li>
+                <li>▲２二飛（先手の飛車）</li>
+                <li>▲５三歩（先手の歩）</li>
+                <li>▲持駒：銀1枚</li>
+            </ul>
+            <p><strong>正解手順：</strong></p>
+            <ol>
+                <li>▲２一飛成（飛車を成って王手）</li>
+                <li>△３一歩打（合駒 - 後手が歩を打って王手を防ぐ）</li>
+                <li>▲５二銀打（銀を打って詰み）</li>
+            </ol>
+        </div>
+
+        <div class="board-preview">
+            <h3>盤面図</h3>
+            <div class="board-grid" id="boardDisplay"></div>
+            <p>先手持駒：銀×1</p>
+        </div>
+
+        <div class="step-guide">
+            <h3>📝 テスト手順</h3>
+            <ol>
+                <li><strong>Nanoha-tsume.html</strong>をブラウザで開く</li>
+                <li>以下の配置を行う：
+                    <ul>
+                        <li>後手を選択 → 玉を選択 → ４一（右から4、上から1）をクリック</li>
+                        <li>後手を選択 → 歩を選択 → ４二をクリック</li>
+                        <li>先手を選択 → 飛を選択 → ２二をクリック</li>
+                        <li>先手を選択 → 歩を選択 → ５三をクリック</li>
+                        <li>「先手の持駒に追加」で銀を選択して追加</li>
+                    </ul>
+                </li>
+                <li><strong>デバッグモードをON</strong>にする（チェックボックス）</li>
+                <li>「<strong>詰みを解く</strong>」ボタンをクリック</li>
+                <li>結果を確認</li>
+            </ol>
+        </div>
+
+        <div id="testResult" class="result-box warning">
+            <h3>テスト結果</h3>
+            <p>Nanoha-tsume.htmlでテストを実行してください。</p>
+        </div>
+
+        <div>
+            <h3>期待される動作</h3>
+            <ul>
+                <li>✅ 無限ループに入らない（10秒以内に結果が出る）</li>
+                <li>✅ 「3手詰め」と表示される</li>
+                <li>✅ 手順に「▲２一飛成」が含まれる</li>
+                <li>✅ 手順に「△３一歩打」（合駒）が含まれる</li>
+                <li>✅ 手順に「▲５二銀打」が含まれる</li>
+            </ul>
+        </div>
+
+        <div>
+            <h3>デバッグ情報収集</h3>
+            <p>もし問題が発生した場合、以下の情報を確認してください：</p>
+            <ul>
+                <li>ブラウザのコンソール（F12）にエラーが出ていないか</li>
+                <li>デバッグモードのログに「合駒」関連のメッセージが出ているか</li>
+                <li>「ノード数制限」や「時間制限」のメッセージが出ていないか</li>
+            </ul>
+        </div>
+
+        <div class="log-output" id="logPreview">
+// ここにデバッグログを貼り付けることができます
+// テスト実行後、デバッグログをコピーしてここに貼り付けてください
+        </div>
+
+        <button onclick="copyTestInfo()">テスト情報をコピー</button>
+        <button onclick="showExpectedLog()">期待されるログの例を表示</button>
+    </div>
+
+    <script>
+        // 盤面表示
+        function initBoard() {
+            const board = Array(9).fill(null).map(() => Array(9).fill(null));
+            // △４一玉 = [0, 5]
+            board[0][5] = {piece: '玉', side: 'gote'};
+            // △４二歩 = [1, 5]  
+            board[1][5] = {piece: '歩', side: 'gote'};
+            // ▲２二飛 = [1, 7]
+            board[1][7] = {piece: '飛', side: 'sente'};
+            // ▲５三歩 = [2, 4]
+            board[2][4] = {piece: '歩', side: 'sente'};
+            
+            const boardDisplay = document.getElementById('boardDisplay');
+            boardDisplay.innerHTML = '';
+            
+            for (let row = 0; row < 9; row++) {
+                for (let col = 0; col < 9; col++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'cell';
+                    
+                    const piece = board[row][col];
+                    if (piece) {
+                        const mark = piece.side === 'sente' ? '▲' : '△';
+                        cell.innerHTML = `<span class="piece-${piece.side}">${piece.piece}</span>`;
+                    }
+                    
+                    boardDisplay.appendChild(cell);
+                }
+            }
+        }
+        
+        function copyTestInfo() {
+            const info = `【3手詰め合駒テスト】
+配置：
+△４一玉、△４二歩、▲２二飛、▲５三歩、▲持銀1
+
+正解手順：
+1. ▲２一飛成
+2. △３一歩打（合駒）
+3. ▲５二銀打`;
+            
+            navigator.clipboard.writeText(info).then(() => {
+                alert('テスト情報をクリップボードにコピーしました');
+            });
+        }
+        
+        function showExpectedLog() {
+            const log = `=== 深さ 3 の探索開始 ===
+現在のノード数: 0
+
+[先手] 王手可能手数: 4
+  手: ▲２一飛成(２二), ▲２一飛(２二), ▲４二飛成(２二), ▲４二飛(２二)
+
+[後手] 王手回避手数: 2
+  手: △３一玉(４一), △３一歩打
+
+  合駒チェック開始: 攻撃駒=龍 at ２一
+  → 飛び駒による王手なので合駒を検討
+    合駒候補位置: ３一
+    → ３一は空きマス、合駒を検討
+    後手が使える駒: 歩, 香, 桂, 銀, 金, 角, 飛
+      歩を３一に打つことを検討
+      → 有効な合駒: △３一歩打
+
+[先手] 王手可能手数: 1
+  手: ▲５二銀打
+
+[後手] 王手回避手数: 0
+  詰み！
+
+詰みました！ 3手詰め`;
+            
+            document.getElementById('logPreview').textContent = log;
+        }
+        
+        // 初期化
+        initBoard();
+    </script>
+</body>
+</html>

@@ -1,2312 +1,1906 @@
 <!DOCTYPE html>
 <html lang="ja">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>詰将棋エンジン（なのは詰めアルゴリズム）</title>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
 
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            padding: 20px;
-        }
+      body {
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-height: 100vh;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        padding: 20px;
+      }
 
-        .container {
-            background: rgba(255, 255, 255, 0.95);
-            border-radius: 20px;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-            padding: 30px;
-            max-width: 1200px;
-            width: 100%;
-        }
+      .container {
+        background: rgba(255, 255, 255, 0.95);
+        border-radius: 20px;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        padding: 30px;
+        max-width: 1200px;
+        width: 100%;
+      }
 
-        h1 {
-            text-align: center;
-            color: #333;
-            margin-bottom: 30px;
-            font-size: 2em;
-        }
+      h1 {
+        text-align: center;
+        color: #333;
+        margin-bottom: 30px;
+        font-size: 2em;
+      }
 
+      .main-content {
+        display: flex;
+        gap: 30px;
+        flex-wrap: wrap;
+        justify-content: center;
+      }
+
+      .board-section {
+        flex: 1;
+        min-width: 400px;
+      }
+
+      .board-container {
+        position: relative;
+        background: #f5deb3;
+        border: 3px solid #8b4513;
+        border-radius: 5px;
+        padding: 30px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+      }
+
+      .coordinates {
+        position: absolute;
+        font-weight: bold;
+        color: #8b4513;
+        font-size: 14px;
+      }
+
+      .coord-top {
+        top: 5px;
+        left: 50%;
+        transform: translateX(-50%);
+      }
+
+      .coord-right {
+        right: 5px;
+        top: 50%;
+        transform: translateY(-50%);
+      }
+
+      #board {
+        display: grid;
+        grid-template-columns: repeat(9, 50px);
+        grid-template-rows: repeat(9, 50px);
+        gap: 1px;
+        background: #8b4513;
+        border: 2px solid #654321;
+      }
+
+      .cell {
+        background: #faebd7;
+        border: 1px solid #d2691e;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        position: relative;
+        transition: all 0.3s ease;
+      }
+
+      .cell:hover {
+        background: #ffe4b5;
+        transform: scale(1.05);
+      }
+
+      .cell.selected {
+        background: #98fb98;
+        box-shadow: inset 0 0 10px rgba(0, 255, 0, 0.5);
+      }
+
+      .cell.possible-move {
+        background: #87ceeb;
+        box-shadow: inset 0 0 10px rgba(0, 100, 255, 0.3);
+      }
+
+      .piece {
+        font-size: 28px;
+        font-weight: bold;
+        user-select: none;
+        transition: transform 0.2s ease;
+      }
+
+      .piece:hover {
+        transform: scale(1.1);
+      }
+
+      .piece.sente {
+        color: #000;
+      }
+
+      .piece.gote {
+        color: #dc143c;
+        transform: rotate(180deg);
+      }
+
+      .controls {
+        flex: 1;
+        min-width: 350px;
+      }
+
+      .control-section {
+        background: #f9f9f9;
+        border-radius: 10px;
+        padding: 20px;
+        margin-bottom: 20px;
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+      }
+
+      .control-section h2 {
+        color: #555;
+        margin-bottom: 15px;
+        font-size: 1.3em;
+      }
+
+      .piece-selector {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 10px;
+        margin-bottom: 15px;
+      }
+
+      .piece-btn {
+        padding: 10px;
+        border: 2px solid #ddd;
+        background: white;
+        border-radius: 5px;
+        cursor: pointer;
+        font-size: 20px;
+        transition: all 0.3s ease;
+      }
+
+      .piece-btn:hover {
+        background: #f0f0f0;
+        transform: translateY(-2px);
+        box-shadow: 0 5px 10px rgba(0, 0, 0, 0.1);
+      }
+
+      .piece-btn.selected {
+        background: #4caf50;
+        color: white;
+        border-color: #45a049;
+      }
+
+      .side-selector {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 15px;
+      }
+
+      .side-btn {
+        flex: 1;
+        padding: 10px;
+        border: 2px solid #ddd;
+        background: white;
+        border-radius: 5px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+      }
+
+      .side-btn.selected {
+        background: #2196f3;
+        color: white;
+        border-color: #1976d2;
+      }
+
+      .action-buttons {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+      }
+
+      button {
+        padding: 12px 24px;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        font-size: 16px;
+        font-weight: bold;
+        transition: all 0.3s ease;
+        flex: 1;
+        min-width: 120px;
+      }
+
+      .btn-primary {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+      }
+
+      .btn-secondary {
+        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        color: white;
+      }
+
+      .btn-danger {
+        background: linear-gradient(135deg, #fc466b 0%, #3f5efb 100%);
+        color: white;
+      }
+
+      button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+      }
+
+      .status {
+        margin-top: 20px;
+        padding: 15px;
+        background: #e8f5e9;
+        border-left: 4px solid #4caf50;
+        border-radius: 5px;
+        font-weight: bold;
+      }
+
+      .status.error {
+        background: #ffebee;
+        border-left-color: #f44336;
+      }
+
+      .status.success {
+        background: #e8f5e9;
+        border-left-color: #4caf50;
+      }
+
+      .status.processing {
+        background: #e3f2fd;
+        border-left-color: #2196f3;
+      }
+
+      .move-list {
+        max-height: 200px;
+        overflow-y: auto;
+        padding: 10px;
+        background: white;
+        border: 1px solid #ddd;
+        border-radius: 5px;
+        margin-top: 10px;
+      }
+
+      .move-item {
+        padding: 5px;
+        margin: 2px 0;
+        background: #f5f5f5;
+        border-radius: 3px;
+        cursor: pointer;
+        transition: background 0.3s ease;
+      }
+
+      .move-item:hover {
+        background: #e0e0e0;
+      }
+
+      .stats {
+        margin-top: 10px;
+        font-size: 0.9em;
+        color: #666;
+      }
+
+      @media (max-width: 768px) {
         .main-content {
-            display: flex;
-            gap: 30px;
-            flex-wrap: wrap;
-            justify-content: center;
-        }
-
-        .board-section {
-            flex: 1;
-            min-width: 400px;
-        }
-
-        .board-container {
-            position: relative;
-            background: #f5deb3;
-            border: 3px solid #8b4513;
-            border-radius: 5px;
-            padding: 30px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
-        }
-
-        .coordinates {
-            position: absolute;
-            font-weight: bold;
-            color: #8b4513;
-            font-size: 14px;
-        }
-
-        .coord-top {
-            top: 5px;
-            left: 50%;
-            transform: translateX(-50%);
-        }
-
-        .coord-right {
-            right: 5px;
-            top: 50%;
-            transform: translateY(-50%);
+          flex-direction: column;
         }
 
         #board {
-            display: grid;
-            grid-template-columns: repeat(9, 50px);
-            grid-template-rows: repeat(9, 50px);
-            gap: 1px;
-            background: #8b4513;
-            border: 2px solid #654321;
-        }
-
-        .cell {
-            background: #faebd7;
-            border: 1px solid #d2691e;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            position: relative;
-            transition: all 0.3s ease;
-        }
-
-        .cell:hover {
-            background: #ffe4b5;
-            transform: scale(1.05);
-        }
-
-        .cell.selected {
-            background: #98fb98;
-            box-shadow: inset 0 0 10px rgba(0, 255, 0, 0.5);
-        }
-
-        .cell.possible-move {
-            background: #87ceeb;
-            box-shadow: inset 0 0 10px rgba(0, 100, 255, 0.3);
+          grid-template-columns: repeat(9, 40px);
+          grid-template-rows: repeat(9, 40px);
         }
 
         .piece {
-            font-size: 28px;
-            font-weight: bold;
-            user-select: none;
-            transition: transform 0.2s ease;
+          font-size: 24px;
         }
-
-        .piece:hover {
-            transform: scale(1.1);
-        }
-
-        .piece.sente {
-            color: #000;
-        }
-
-        .piece.gote {
-            color: #dc143c;
-            transform: rotate(180deg);
-        }
-
-        .controls {
-            flex: 1;
-            min-width: 350px;
-        }
-
-        .control-section {
-            background: #f9f9f9;
-            border-radius: 10px;
-            padding: 20px;
-            margin-bottom: 20px;
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
-        }
-
-        .control-section h2 {
-            color: #555;
-            margin-bottom: 15px;
-            font-size: 1.3em;
-        }
-
-        .piece-selector {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 10px;
-            margin-bottom: 15px;
-        }
-
-        .piece-btn {
-            padding: 10px;
-            border: 2px solid #ddd;
-            background: white;
-            border-radius: 5px;
-            cursor: pointer;
-            font-size: 20px;
-            transition: all 0.3s ease;
-        }
-
-        .piece-btn:hover {
-            background: #f0f0f0;
-            transform: translateY(-2px);
-            box-shadow: 0 5px 10px rgba(0, 0, 0, 0.1);
-        }
-
-        .piece-btn.selected {
-            background: #4CAF50;
-            color: white;
-            border-color: #45a049;
-        }
-
-        .side-selector {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 15px;
-        }
-
-        .side-btn {
-            flex: 1;
-            padding: 10px;
-            border: 2px solid #ddd;
-            background: white;
-            border-radius: 5px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-        }
-
-        .side-btn.selected {
-            background: #2196F3;
-            color: white;
-            border-color: #1976D2;
-        }
-
-        .action-buttons {
-            display: flex;
-            gap: 10px;
-            flex-wrap: wrap;
-        }
-
-        button {
-            padding: 12px 24px;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            font-size: 16px;
-            font-weight: bold;
-            transition: all 0.3s ease;
-            flex: 1;
-            min-width: 120px;
-        }
-
-        .btn-primary {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-        }
-
-        .btn-secondary {
-            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-            color: white;
-        }
-
-        .btn-danger {
-            background: linear-gradient(135deg, #fc466b 0%, #3f5efb 100%);
-            color: white;
-        }
-
-        button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
-        }
-
-        .status {
-            margin-top: 20px;
-            padding: 15px;
-            background: #e8f5e9;
-            border-left: 4px solid #4CAF50;
-            border-radius: 5px;
-            font-weight: bold;
-        }
-
-        .status.error {
-            background: #ffebee;
-            border-left-color: #f44336;
-        }
-
-        .status.success {
-            background: #e8f5e9;
-            border-left-color: #4CAF50;
-        }
-
-        .status.processing {
-            background: #e3f2fd;
-            border-left-color: #2196F3;
-        }
-
-        .move-list {
-            max-height: 200px;
-            overflow-y: auto;
-            padding: 10px;
-            background: white;
-            border: 1px solid #ddd;
-            border-radius: 5px;
-            margin-top: 10px;
-        }
-
-        .move-item {
-            padding: 5px;
-            margin: 2px 0;
-            background: #f5f5f5;
-            border-radius: 3px;
-            cursor: pointer;
-            transition: background 0.3s ease;
-        }
-
-        .move-item:hover {
-            background: #e0e0e0;
-        }
-
-        .stats {
-            margin-top: 10px;
-            font-size: 0.9em;
-            color: #666;
-        }
-
-        @media (max-width: 768px) {
-            .main-content {
-                flex-direction: column;
-            }
-            
-            #board {
-                grid-template-columns: repeat(9, 40px);
-                grid-template-rows: repeat(9, 40px);
-            }
-            
-            .piece {
-                font-size: 24px;
-            }
-        }
+      }
     </style>
-</head>
-<body>
+  </head>
+  <body>
     <div class="container">
-        <h1>🎯 詰将棋エンジン（なのは詰めアルゴリズム）</h1>
-        
-        <div class="main-content">
-            <div class="board-section">
-                <div class="board-container">
-                    <div class="coordinates coord-top">▼先手</div>
-                    <div class="coordinates coord-right">9 8 7 6 5 4 3 2 1</div>
-                    <div id="board"></div>
-                </div>
-            </div>
-            
-            <div class="controls">
-                <div class="control-section">
-                    <h2>📋 駒配置モード</h2>
-                    
-                    <div class="side-selector">
-                        <button class="side-btn selected" data-side="sente">☗ 先手（攻方）</button>
-                        <button class="side-btn" data-side="gote">☖ 後手（玉方）</button>
-                    </div>
-                    
-                    <div class="piece-selector">
-                        <button class="piece-btn" data-piece="玉">玉</button>
-                        <button class="piece-btn" data-piece="飛">飛</button>
-                        <button class="piece-btn" data-piece="角">角</button>
-                        <button class="piece-btn" data-piece="金">金</button>
-                        <button class="piece-btn" data-piece="銀">銀</button>
-                        <button class="piece-btn" data-piece="桂">桂</button>
-                        <button class="piece-btn" data-piece="香">香</button>
-                        <button class="piece-btn" data-piece="歩">歩</button>
-                        <button class="piece-btn" data-piece="龍">龍</button>
-                        <button class="piece-btn" data-piece="馬">馬</button>
-                        <button class="piece-btn" data-piece="全">全</button>
-                        <button class="piece-btn" data-piece="圭">圭</button>
-                        <button class="piece-btn" data-piece="杏">杏</button>
-                        <button class="piece-btn" data-piece="と">と</button>
-                        <button class="piece-btn" data-piece="削除">×</button>
-                    </div>
-                    
-                    <div style="margin-top: 15px;">
-                        <h3>持ち駒（先手のみ）</h3>
-                        <div id="mochiGomaDisplay" style="padding: 10px; background: white; border-radius: 5px; min-height: 40px;">
-                            <div>先手: <span id="senteMochi">なし</span></div>
-                            <div style="color: #888; font-size: 0.9em;">※詰将棋では先手の持駒以外は全て後手が持っています</div>
-                        </div>
-                        <div style="margin-top: 10px;">
-                            <label>先手の持駒に追加: 
-                                <select id="mochiPiece" style="padding: 5px;">
-                                    <option value="">選択</option>
-                                    <option value="飛">飛</option>
-                                    <option value="角">角</option>
-                                    <option value="金">金</option>
-                                    <option value="銀">銀</option>
-                                    <option value="桂">桂</option>
-                                    <option value="香">香</option>
-                                    <option value="歩">歩</option>
-                                </select>
-                            </label>
-                            <button onclick="addMochiGoma()" style="padding: 5px 10px;">追加</button>
-                            <button onclick="clearSenteMochi()" style="padding: 5px 10px; background: #ff6b6b; color: white;">クリア</button>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="control-section">
-                    <h2>🎮 操作</h2>
-                    <div class="action-buttons">
-                        <button class="btn-primary" onclick="solveTsume()">詰みを解く</button>
-                        <button class="btn-secondary" onclick="clearBoard()">盤面クリア</button>
-                        <button class="btn-secondary" onclick="loadSampleProblem()">例題をランダム読込</button>
-                    </div>
-                    <div style="margin-top: 10px;">
-                        <select id="problemSelect" style="width: 100%; padding: 8px; margin-bottom: 5px;">
-                            <option value="">例題を選択</option>
-                            <option value="0">1手詰め（基本）</option>
-                            <option value="1">3手詰め（持駒使用）</option>
-                            <option value="2">3手詰め（合駒問題）</option>
-                            <option value="3">不詰み（合駒で逃れる）</option>
-                            <option value="4">1手詰め（頭金）</option>
-                            <option value="5">3手詰め（飛車の利き）</option>
-                        </select>
-                        <button onclick="loadSpecificProblem()" style="width: 100%; padding: 8px;">選択した例題を読込</button>
-                    </div>
-                    <div style="margin-top: 15px;">
-                        <h3>💾 配置の保存・読込</h3>
-                        <div style="display: flex; gap: 10px; margin-bottom: 10px;">
-                            <button onclick="savePosition()" style="flex: 1; padding: 8px;">現在の配置を保存</button>
-                            <button onclick="showSavedPositions()" style="flex: 1; padding: 8px;">保存した配置を表示</button>
-                        </div>
-                        <div id="savedPositions" style="display: none; margin-top: 10px;">
-                            <select id="positionSelect" style="width: 100%; padding: 5px; margin-bottom: 10px;">
-                                <option value="">保存した配置を選択</option>
-                            </select>
-                            <div style="display: flex; gap: 10px;">
-                                <button onclick="loadPosition()" style="flex: 1; padding: 8px;">読込</button>
-                                <button onclick="deletePosition()" style="flex: 1; padding: 8px; background: #ff6b6b; color: white;">削除</button>
-                            </div>
-                        </div>
-                        <div style="margin-top: 10px;">
-                            <h4>配置コード</h4>
-                            <textarea id="positionCode" style="width: 100%; height: 60px; font-family: monospace; font-size: 12px;" placeholder="配置コードをここに貼り付けて読み込むこともできます"></textarea>
-                            <div style="display: flex; gap: 10px; margin-top: 5px;">
-                                <button onclick="exportPosition()" style="flex: 1; padding: 8px;">現在の配置をコピー</button>
-                                <button onclick="importPosition()" style="flex: 1; padding: 8px;">コードから読込</button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="control-section">
-                    <h2>📊 状態</h2>
-                    <div id="status" class="status">駒を配置してください（座標例：５一玉）</div>
-                    <div id="stats" class="stats"></div>
-                    <div id="moveList" class="move-list" style="display: none;"></div>
-                    <div style="margin-top: 10px;">
-                        <label>
-                            <input type="checkbox" id="debugMode" onchange="toggleDebugMode()">
-                            デバッグモード
-                        </label>
-                    </div>
-                    <div id="debugOutput" style="display: none; margin-top: 10px; padding: 10px; background: #f0f0f0; border-radius: 5px; font-family: monospace; font-size: 12px; max-height: 200px; overflow-y: auto;"></div>
-                </div>
-            </div>
+      <h1>🎯 詰将棋エンジン（なのは詰めアルゴリズム）</h1>
+
+      <div class="main-content">
+        <div class="board-section">
+          <div class="board-container">
+            <div class="coordinates coord-top">▼先手</div>
+            <div class="coordinates coord-right">9 8 7 6 5 4 3 2 1</div>
+            <div id="board"></div>
+          </div>
         </div>
+
+        <div class="controls">
+          <div class="control-section">
+            <h2>📋 駒配置モード</h2>
+
+            <div class="side-selector">
+              <button class="side-btn selected" data-side="sente">
+                ☗ 先手（攻方）
+              </button>
+              <button class="side-btn" data-side="gote">☖ 後手（玉方）</button>
+            </div>
+
+            <div class="piece-selector">
+              <button class="piece-btn" data-piece="玉">玉</button>
+              <button class="piece-btn" data-piece="飛">飛</button>
+              <button class="piece-btn" data-piece="角">角</button>
+              <button class="piece-btn" data-piece="金">金</button>
+              <button class="piece-btn" data-piece="銀">銀</button>
+              <button class="piece-btn" data-piece="桂">桂</button>
+              <button class="piece-btn" data-piece="香">香</button>
+              <button class="piece-btn" data-piece="歩">歩</button>
+              <button class="piece-btn" data-piece="龍">龍</button>
+              <button class="piece-btn" data-piece="馬">馬</button>
+              <button class="piece-btn" data-piece="全">全</button>
+              <button class="piece-btn" data-piece="圭">圭</button>
+              <button class="piece-btn" data-piece="杏">杏</button>
+              <button class="piece-btn" data-piece="と">と</button>
+              <button class="piece-btn" data-piece="削除">×</button>
+            </div>
+
+            <div style="margin-top: 15px">
+              <h3>持ち駒（先手のみ）</h3>
+              <div
+                id="mochiGomaDisplay"
+                style="
+                  padding: 10px;
+                  background: white;
+                  border-radius: 5px;
+                  min-height: 40px;
+                "
+              >
+                <div>先手: <span id="senteMochi">なし</span></div>
+                <div style="color: #888; font-size: 0.9em">
+                  ※詰将棋では先手の持駒以外は全て後手が持っています
+                </div>
+              </div>
+              <div style="margin-top: 10px">
+                <label
+                  >先手の持駒に追加:
+                  <select id="mochiPiece" style="padding: 5px">
+                    <option value="">選択</option>
+                    <option value="飛">飛</option>
+                    <option value="角">角</option>
+                    <option value="金">金</option>
+                    <option value="銀">銀</option>
+                    <option value="桂">桂</option>
+                    <option value="香">香</option>
+                    <option value="歩">歩</option>
+                  </select>
+                </label>
+                <button onclick="addMochiGoma()" style="padding: 5px 10px">
+                  追加
+                </button>
+                <button
+                  onclick="clearSenteMochi()"
+                  style="padding: 5px 10px; background: #ff6b6b; color: white"
+                >
+                  クリア
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div class="control-section">
+            <h2>🎮 操作</h2>
+            <div class="action-buttons">
+              <button class="btn-primary" onclick="solveTsume()">
+                詰みを解く
+              </button>
+              <button class="btn-secondary" onclick="clearBoard()">
+                盤面クリア
+              </button>
+              <button class="btn-secondary" onclick="loadSampleProblem()">
+                例題を読込
+              </button>
+            </div>
+            <div style="margin-top: 15px">
+              <h3>💾 配置の保存・読込</h3>
+              <div style="display: flex; gap: 10px; margin-bottom: 10px">
+                <button onclick="savePosition()" style="flex: 1; padding: 8px">
+                  現在の配置を保存
+                </button>
+                <button
+                  onclick="showSavedPositions()"
+                  style="flex: 1; padding: 8px"
+                >
+                  保存した配置を表示
+                </button>
+              </div>
+              <div id="savedPositions" style="display: none; margin-top: 10px">
+                <select
+                  id="positionSelect"
+                  style="width: 100%; padding: 5px; margin-bottom: 10px"
+                >
+                  <option value="">保存した配置を選択</option>
+                </select>
+                <div style="display: flex; gap: 10px">
+                  <button
+                    onclick="loadPosition()"
+                    style="flex: 1; padding: 8px"
+                  >
+                    読込
+                  </button>
+                  <button
+                    onclick="deletePosition()"
+                    style="
+                      flex: 1;
+                      padding: 8px;
+                      background: #ff6b6b;
+                      color: white;
+                    "
+                  >
+                    削除
+                  </button>
+                </div>
+              </div>
+              <div style="margin-top: 10px">
+                <h4>配置コード</h4>
+                <textarea
+                  id="positionCode"
+                  style="
+                    width: 100%;
+                    height: 60px;
+                    font-family: monospace;
+                    font-size: 12px;
+                  "
+                  placeholder="配置コードをここに貼り付けて読み込むこともできます"
+                ></textarea>
+                <div style="display: flex; gap: 10px; margin-top: 5px">
+                  <button
+                    onclick="exportPosition()"
+                    style="flex: 1; padding: 8px"
+                  >
+                    現在の配置をコピー
+                  </button>
+                  <button
+                    onclick="importPosition()"
+                    style="flex: 1; padding: 8px"
+                  >
+                    コードから読込
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="control-section">
+            <h2>📊 状態</h2>
+            <div id="status" class="status">
+              駒を配置してください（座標例：５一玉）
+            </div>
+            <div id="stats" class="stats"></div>
+            <div id="moveList" class="move-list" style="display: none"></div>
+            <div style="margin-top: 10px">
+              <label>
+                <input
+                  type="checkbox"
+                  id="debugMode"
+                  onchange="toggleDebugMode()"
+                />
+                デバッグモード
+              </label>
+            </div>
+            <div
+              id="debugOutput"
+              style="
+                display: none;
+                margin-top: 10px;
+                padding: 10px;
+                background: #f0f0f0;
+                border-radius: 5px;
+                font-family: monospace;
+                font-size: 12px;
+                max-height: 200px;
+                overflow-y: auto;
+              "
+            ></div>
+          </div>
+        </div>
+      </div>
     </div>
 
     <script>
-        // 座標変換（人間表記を基準に）
-        const SUJI_MAP = {'９': 0, '８': 1, '７': 2, '６': 3, '５': 4, '４': 5, '３': 6, '２': 7, '１': 8};
-        const DAN_MAP = {'一': 0, '二': 1, '三': 2, '四': 3, '五': 4, '六': 5, '七': 6, '八': 7, '九': 8};
-        const SUJI_STR = ['９', '８', '７', '６', '５', '４', '３', '２', '１'];
-        const DAN_STR = ['一', '二', '三', '四', '五', '六', '七', '八', '九'];
+      // 座標変換（人間表記を基準に）
+      const SUJI_MAP = {
+        "９": 0,
+        "８": 1,
+        "７": 2,
+        "６": 3,
+        "５": 4,
+        "４": 5,
+        "３": 6,
+        "２": 7,
+        "１": 8,
+      };
+      const DAN_MAP = {
+        一: 0,
+        二: 1,
+        三: 2,
+        四: 3,
+        五: 4,
+        六: 5,
+        七: 6,
+        八: 7,
+        九: 8,
+      };
+      const SUJI_STR = ["９", "８", "７", "６", "５", "４", "３", "２", "１"];
+      const DAN_STR = ["一", "二", "三", "四", "五", "六", "七", "八", "九"];
 
-        // 人間表記から内部座標へ
-        function humanToInternal(humanPos) {
-            if (!humanPos || humanPos.length !== 2) return null;
-            const suji = SUJI_MAP[humanPos[0]];
-            const dan = DAN_MAP[humanPos[1]];
-            if (suji === undefined || dan === undefined) return null;
-            return [dan, suji];
+      // 人間表記から内部座標へ
+      function humanToInternal(humanPos) {
+        if (!humanPos || humanPos.length !== 2) return null;
+        const suji = SUJI_MAP[humanPos[0]];
+        const dan = DAN_MAP[humanPos[1]];
+        if (suji === undefined || dan === undefined) return null;
+        return [dan, suji];
+      }
+
+      // 内部座標から人間表記へ
+      function internalToHuman(row, col) {
+        return SUJI_STR[col] + DAN_STR[row];
+      }
+
+      // 詰将棋エンジン（なのは詰めアルゴリズム）
+      class TsumeShogi {
+        constructor() {
+          this.board = Array(9)
+            .fill(null)
+            .map(() => Array(9).fill(null));
+          this.currentSide = "sente";
+          this.selectedPiece = null;
+          this.solving = false;
+          this.mochiGoma = { sente: {}, gote: {} };
+          this.hashTable = new Map();
+          this.nodeCount = 0;
+          this.maxDepth = 25;  // 5手詰め対応のため増加
+          this.maxNodes = 200000;  // ノード数制限を増加
+          this.debugMode = false;
+          this.startTime = null;
+          this.timeLimit = 30000;  // 30秒のタイムアウト
+          this.positionHistory = [];  // 局面履歴（千日手検出用）
+          this.repetitionCount = new Map();  // 同一局面カウント
+          this.init();
         }
 
-        // 内部座標から人間表記へ
-        function internalToHuman(row, col) {
-            return SUJI_STR[col] + DAN_STR[row];
+        init() {
+          this.createBoard();
+          this.setupEventListeners();
+          this.updateStatus("駒を配置してください");
         }
 
-        // 詰将棋エンジン（なのは詰めアルゴリズム）
-        class TsumeShogi {
-            constructor() {
-                this.board = Array(9).fill(null).map(() => Array(9).fill(null));
-                this.currentSide = 'sente';
-                this.selectedPiece = null;
-                this.solving = false;
-                this.mochiGoma = { sente: {}, gote: {} };
-                this.hashTable = new Map();
-                this.nodeCount = 0;
-                this.maxDepth = 25;  // 深さ制限を増やして深い詰みも解けるように
-                this.debugMode = false;  // デバッグモード追加
-                this.killerMoves = new Map();  // キラームーブ（良い手を記憶）
-                this.historyTable = new Map();  // ヒストリーテーブル（手の評価値）
-                this.init();
+        createBoard() {
+          const boardElement = document.getElementById("board");
+          boardElement.innerHTML = "";
+
+          for (let row = 0; row < 9; row++) {
+            for (let col = 0; col < 9; col++) {
+              const cell = document.createElement("div");
+              cell.className = "cell";
+              cell.dataset.row = row;
+              cell.dataset.col = col;
+              cell.onclick = () => this.cellClick(row, col);
+
+              const pos = internalToHuman(row, col);
+              cell.title = pos;
+
+              boardElement.appendChild(cell);
             }
+          }
+        }
 
-            init() {
-                this.createBoard();
-                this.setupEventListeners();
-                this.updateStatus('駒を配置してください');
+        setupEventListeners() {
+          document.querySelectorAll(".piece-btn").forEach((btn) => {
+            btn.onclick = () => {
+              document
+                .querySelectorAll(".piece-btn")
+                .forEach((b) => b.classList.remove("selected"));
+              btn.classList.add("selected");
+              this.selectedPiece = btn.dataset.piece;
+            };
+          });
+
+          document.querySelectorAll(".side-btn").forEach((btn) => {
+            btn.onclick = () => {
+              document
+                .querySelectorAll(".side-btn")
+                .forEach((b) => b.classList.remove("selected"));
+              btn.classList.add("selected");
+              this.currentSide = btn.dataset.side;
+            };
+          });
+        }
+
+        cellClick(row, col) {
+          if (this.solving) return;
+
+          if (this.selectedPiece === "削除") {
+            this.board[row][col] = null;
+            this.updateBoard();
+            return;
+          }
+
+          if (this.selectedPiece) {
+            this.board[row][col] = {
+              piece: this.selectedPiece,
+              side: this.currentSide,
+            };
+            this.updateBoard();
+          }
+        }
+
+        updateBoard() {
+          const cells = document.querySelectorAll(".cell");
+          cells.forEach((cell, index) => {
+            const row = Math.floor(index / 9);
+            const col = index % 9;
+            const piece = this.board[row][col];
+
+            if (piece) {
+              cell.innerHTML = `<span class="piece ${piece.side}">${piece.piece}</span>`;
+            } else {
+              cell.innerHTML = "";
             }
+          });
+        }
 
-            createBoard() {
-                const boardElement = document.getElementById('board');
-                boardElement.innerHTML = '';
-                
-                for (let row = 0; row < 9; row++) {
-                    for (let col = 0; col < 9; col++) {
-                        const cell = document.createElement('div');
-                        cell.className = 'cell';
-                        cell.dataset.row = row;
-                        cell.dataset.col = col;
-                        cell.onclick = () => this.cellClick(row, col);
-                        
-                        const pos = internalToHuman(row, col);
-                        cell.title = pos;
-                        
-                        boardElement.appendChild(cell);
-                    }
-                }
+        // 盤面をハッシュ化
+        hashPosition() {
+          let hash = "";
+          for (let row = 0; row < 9; row++) {
+            for (let col = 0; col < 9; col++) {
+              const piece = this.board[row][col];
+              if (piece) {
+                hash += `${internalToHuman(row, col)}${piece.piece}${
+                  piece.side[0]
+                }`;
+              }
             }
+          }
+          for (const [piece, count] of Object.entries(this.mochiGoma.sente)) {
+            hash += `S${piece}${count}`;
+          }
+          return hash;
+        }
 
-            setupEventListeners() {
-                document.querySelectorAll('.piece-btn').forEach(btn => {
-                    btn.onclick = () => {
-                        document.querySelectorAll('.piece-btn').forEach(b => b.classList.remove('selected'));
-                        btn.classList.add('selected');
-                        this.selectedPiece = btn.dataset.piece;
-                    };
-                });
+        // なのは詰めアルゴリズムのメイン
+        solveTsume() {
+          this.solving = true;
+          this.nodeCount = 0;
+          this.hashTable.clear();
+          this.positionHistory = [];
+          this.repetitionCount.clear();
+          this.startTime = Date.now();
+          this.updateStatus("探索中...", "processing");
 
-                document.querySelectorAll('.side-btn').forEach(btn => {
-                    btn.onclick = () => {
-                        document.querySelectorAll('.side-btn').forEach(b => b.classList.remove('selected'));
-                        btn.classList.add('selected');
-                        this.currentSide = btn.dataset.side;
-                    };
-                });
+          // 後手玉の位置確認
+          let goteKingPos = null;
+          for (let row = 0; row < 9; row++) {
+            for (let col = 0; col < 9; col++) {
+              const piece = this.board[row][col];
+              if (piece && piece.piece === "玉" && piece.side === "gote") {
+                goteKingPos = internalToHuman(row, col);
+                break;
+              }
             }
+          }
 
-            cellClick(row, col) {
-                if (this.solving) return;
-                
-                if (this.selectedPiece === '削除') {
-                    this.board[row][col] = null;
-                    this.updateBoard();
-                    return;
-                }
-                
-                if (this.selectedPiece) {
-                    this.board[row][col] = {
-                        piece: this.selectedPiece,
-                        side: this.currentSide
-                    };
-                    this.updateBoard();
-                }
-            }
+          if (!goteKingPos) {
+            this.updateStatus("後手の玉を配置してください", "error");
+            this.solving = false;
+            return;
+          }
 
-            updateBoard() {
-                const cells = document.querySelectorAll('.cell');
-                cells.forEach((cell, index) => {
-                    const row = Math.floor(index / 9);
-                    const col = index % 9;
-                    const piece = this.board[row][col];
-                    
-                    if (piece) {
-                        cell.innerHTML = `<span class="piece ${piece.side}">${piece.piece}</span>`;
-                    } else {
-                        cell.innerHTML = '';
-                    }
-                });
-            }
+          // 非同期で実行
+          setTimeout(() => {
+            try {
+              const startTime = Date.now();
+              let solution = null;
 
-            // 盤面をハッシュ化
-            hashPosition() {
-                let hash = '';
-                for (let row = 0; row < 9; row++) {
-                    for (let col = 0; col < 9; col++) {
-                        const piece = this.board[row][col];
-                        if (piece) {
-                            hash += `${internalToHuman(row, col)}${piece.piece}${piece.side[0]}`;
-                        }
-                    }
-                }
-                for (const [piece, count] of Object.entries(this.mochiGoma.sente)) {
-                    hash += `S${piece}${count}`;
-                }
-                return hash;
-            }
-
-            // なのは詰めアルゴリズムのメイン
-            solveTsume() {
+              // 反復深化
+              for (let depth = 1; depth <= this.maxDepth; depth++) {
                 if (this.debugMode) {
-                    this.debugLog('=== 詰将棋解析開始 ===');
-                    this.debugLog('現在の盤面:');
-                    this.debugBoard();
+                  this.debugLog(`深さ ${depth} の探索開始`);
                 }
-                // 既に探索中の場合は実行しない
-                if (this.solving) {
-                    this.updateStatus('既に探索中です', 'error');
-                    return;
+                const result = this.search(depth, true);
+                if (result) {
+                  solution = result;
+                  if (this.debugMode) {
+                    this.debugLog(`詰みを発見！ ${result.length}手詰め`);
+                  }
+                  break;
                 }
-                
-                this.solving = true;
-                this.nodeCount = 0;
-                this.hashTable.clear();
-                this.killerMoves.clear();  // キラームーブをクリア
-                this.historyTable.clear();  // ヒストリーテーブルをクリア
-                this.searchStartTime = Date.now();  // 探索開始時刻
-                this.maxSearchTime = 10000;  // 最大探索時間（10秒：合駒を含む3手詰め対応）
-                this.maxNodes = 20000;  // 最大ノード数（20000：合駒探索に必要）
-                this.repetitionTable = new Map();  // 千日手検出用
-                this.updateStatus('探索中...', 'processing');
-                
-                // 盤面妥当性チェック
-                const validationResult = this.validateBoard();
-                if (!validationResult.valid) {
-                    this.updateStatus(validationResult.message, 'error');
-                    this.solving = false;
-                    return;
-                }
-                
-                // 後手玉の位置確認
-                let goteKingPos = null;
-                for (let row = 0; row < 9; row++) {
-                    for (let col = 0; col < 9; col++) {
-                        const piece = this.board[row][col];
-                        if (piece && piece.piece === '玉' && piece.side === 'gote') {
-                            goteKingPos = internalToHuman(row, col);
-                            break;
-                        }
-                    }
-                }
-                
-                if (!goteKingPos) {
-                    this.updateStatus('後手の玉を配置してください', 'error');
-                    this.solving = false;
-                    return;
-                }
-
-                // 非同期で実行
-                setTimeout(() => {
-                    try {
-                        const startTime = Date.now();
-                        let solution = null;
-                        
-                        // 反復深化
-                        for (let depth = 1; depth <= this.maxDepth; depth++) {
-                            if (this.debugMode) {
-                                this.debugLog(`\n=== 深さ ${depth} の探索開始 ===`);
-                                this.debugLog(`現在のノード数: ${this.nodeCount}`);
-                            }
-                            
-                            const result = this.search(depth, true);
-                            if (result) {
-                                solution = result;
-                                break;
-                            }
-                            
-                            // 制限チェック
-                            const elapsed = Date.now() - this.searchStartTime;
-                            if (this.nodeCount > this.maxNodes || elapsed > this.maxSearchTime) {
-                                if (this.debugMode) {
-                                    this.debugLog(`探索制限に到達: ノード数=${this.nodeCount}, 時間=${elapsed}ms`);
-                                }
-                                break;
-                            }
-                        }
-                        
-                        const elapsed = Date.now() - startTime;
-                        
-                        if (solution) {
-                            this.updateStatus(`詰みました！ ${solution.length}手詰め`, 'success');
-                            this.displayMoves(solution);
-                        } else {
-                            this.updateStatus('詰みません', 'error');
-                        }
-                        
-                        document.getElementById('stats').innerHTML = 
-                            `探索ノード数: ${this.nodeCount.toLocaleString()} | ` +
-                            `時間: ${(elapsed / 1000).toFixed(2)}秒`;
-                        
-                    } catch (error) {
-                        console.error('エラー:', error);
-                        this.updateStatus('エラーが発生しました', 'error');
-                    } finally {
-                        this.solving = false;
-                    }
-                }, 10);
-            }
-
-            // すべての詰み変化を収集
-            collectAllMateVariations(depth) {
-                const variations = [];
-                
-                // ハッシュテーブルが初期化されていない場合は初期化
-                if (!this.hashTable) {
-                    this.hashTable = new Map();
-                }
-                
-                // 初手の王手をすべて生成
-                const checks = this.generateChecks();
-                
-                for (const firstMove of checks) {
-                    const backup1 = this.makeMove(firstMove);
-                    
-                    // この手で詰むか確認
-                    const result = this.search(depth - 1, false);
-                    
-                    if (result !== null && result !== undefined) {
-                        // 詰みがある場合、すべての変化を収集
-                        const moveVariations = this.collectVariationsAfterMove(firstMove, depth - 1);
-                        if (moveVariations.length > 0) {
-                            variations.push({
-                                firstMove: this.formatMove(firstMove),
-                                variations: moveVariations
-                            });
-                        }
-                    }
-                    
-                    this.unmakeMove(firstMove, backup1);
-                }
-                
-                return variations;
-            }
-            
-            // 特定の手のあとのすべての変化を収集
-            collectVariationsAfterMove(firstMove, remainingDepth) {
-                const variations = [];
-                
-                if (!this.isCheck('gote')) {
-                    return variations;
-                }
-                
-                const evasions = this.generateEvasions();
-                
-                if (evasions.length === 0) {
-                    // 即詰み
-                    return [{
-                        moves: [],
-                        result: '詰み'
-                    }];
-                }
-                
-                // 各応手に対して詰みを確認
-                for (const evasion of evasions) {
-                    const backup = this.makeMove(evasion);
-                    
-                    if (!this.isCheck('gote')) {
-                        // 王手が解除された場合、先手の詰み手を探す
-                        const checks = this.generateChecks();
-                        
-                        for (const check of checks) {
-                            const backup2 = this.makeMove(check);
-                            const finalEvasions = this.generateEvasions();
-                            
-                            if (finalEvasions.length === 0) {
-                                // 詰み発見
-                                variations.push({
-                                    moves: [this.formatMove(evasion), this.formatMove(check)],
-                                    result: '詰み'
-                                });
-                            }
-                            
-                            this.unmakeMove(check, backup2);
-                        }
-                    }
-                    
-                    this.unmakeMove(evasion, backup);
-                }
-                
-                return variations;
-            }
-            
-            // 探索本体（単一の手順のみ）
-            search(depth, isSente) {
-                // 深さ0の場合
-                if (depth === 0) {
-                    // 後手が王手されているか確認（手番に関係なく）
-                    if (this.isCheck('gote')) {
-                        const evasions = this.generateEvasions();
-                        if (evasions.length === 0) {
-                            return []; // 詰み
-                        }
-                    }
-                    return null;
-                }
-                
-                // ノード数制限チェック
-                this.nodeCount++;
+                // 無限ループ対策（強化版）
                 if (this.nodeCount > this.maxNodes) {
-                    if (this.debugMode) {
-                        this.debugLog(`ノード数制限(${this.maxNodes})に到達`);
-                    }
-                    return null;
+                  if (this.debugMode) {
+                    this.debugLog(`ノード数制限 (${this.maxNodes}) に到達`);
+                  }
+                  break;
                 }
                 
-                // 時間制限チェック
-                if (this.nodeCount % 1000 === 0) {
-                    const elapsed = Date.now() - this.searchStartTime;
-                    if (elapsed > this.maxSearchTime) {
-                        if (this.debugMode) {
-                            this.debugLog(`時間制限(${this.maxSearchTime}ms)に到達`);
-                        }
-                        return null;
-                    }
+                // タイムアウトチェック
+                if (Date.now() - startTime > this.timeLimit) {
+                  if (this.debugMode) {
+                    this.debugLog(`タイムアウト (${this.timeLimit}ms) に到達`);
+                  }
+                  break;
                 }
-                
-                // 千日手チェック（深さも考慮）
-                const positionKey = this.hashPosition() + '_d' + depth;
-                const repetitions = this.repetitionTable.get(positionKey) || 0;
-                if (repetitions >= 2) {  // 2回目で千日手判定（3回目を待たない）
-                    if (this.debugMode && repetitions === 2) {
-                        this.debugLog('千日手を検出（同一局面2回目）');
-                    }
-                    return null;
-                }
-                this.repetitionTable.set(positionKey, repetitions + 1);
-                
-                // デバッグログ
-                if (this.debugMode && this.nodeCount % 1000 === 0) {
-                    this.debugLog(`[進捗] ノード数: ${this.nodeCount}, 深さ: ${depth}, 手番: ${isSente ? '先手' : '後手'}`);
-                }
-                
-                // ハッシュ表確認（改善版）
-                const hash = this.hashPosition() + '_' + isSente;
-                const cached = this.hashTable.get(hash);
-                if (cached && cached.depth >= depth) {
-                    // 千日手カウントを戻す
-                    this.repetitionTable.set(positionKey, Math.max(0, repetitions - 1));
-                    return cached.result;
-                }
-                
-                // 現在の状態確認
-                const isCheck = this.isCheck(isSente ? 'gote' : 'sente');
-                
-                if (isSente) {
-                    // 先手番：王手をかける
-                    let moves = this.generateChecks();
-                    
-                    if (this.debugMode && depth <= 3) {
-                        this.debugLog(`[先手] 王手可能手数: ${moves.length}`);
-                        if (moves.length > 0 && moves.length <= 10) {
-                            this.debugLog(`  手: ${moves.slice(0, 10).map(m => this.formatMove(m)).join(', ')}`);
-                        }
-                    }
-                    
-                    // 手の並び替え（良い手を先に試す）
-                    moves = this.orderMoves(moves, depth);
-                    
-                    for (const move of moves) {
-                        const backup = this.makeMove(move);
-                        const result = this.search(depth - 1, false);
-                        this.unmakeMove(move, backup);
-                        
-                        if (result !== null) {
-                            const solution = [this.formatMove(move), ...result];
-                            this.hashTable.set(hash, { depth, result: solution });
-                            
-                            // キラームーブとして記録
-                            this.recordKillerMove(depth, move);
-                            
-                            // 千日手カウントを戻す
-                            this.repetitionTable.set(positionKey, Math.max(0, repetitions - 1));
-                            return solution;
-                        }
-                    }
-                    
-                    this.hashTable.set(hash, { depth, result: null });
-                    // 千日手カウントを戻す
-                    this.repetitionTable.set(positionKey, Math.max(0, repetitions - 1));
-                    return null;
-                    
-                } else {
-                    // 後手番：王手回避
-                    if (!this.isCheck('gote')) {
-                        // 後手が王手されていない場合は詰みではない
-                        if (this.debugMode && depth <= 3) {
-                            this.debugLog(`[後手] 王手されていないので詰みではない`);
-                        }
-                        // 千日手カウントを戻す
-                        this.repetitionTable.set(positionKey, Math.max(0, repetitions - 1));
-                        return null;
-                    }
-                    
-                    const moves = this.generateEvasions();
-                    
-                    if (this.debugMode && depth <= 5) {
-                        this.debugLog(`[後手] 王手回避手数: ${moves.length}`);
-                        if (moves.length === 0) {
-                            this.debugLog(`  詰み！`);
-                        } else if (moves.length <= 5) {
-                            this.debugLog(`  手: ${moves.map(m => this.formatMove(m)).join(', ')}`);
-                        }
-                    }
-                    
-                    if (moves.length === 0) {
-                        // 千日手カウントを戻す
-                        this.repetitionTable.set(positionKey, Math.max(0, repetitions - 1));
-                        return [];  // 詰み
-                    }
-                    
-                    // すべての回避手を試す
-                    let bestResult = null;
-                    for (const move of moves) {
-                        const backup = this.makeMove(move);
-                        
-                        // 王手が解除されているか確認
-                        if (!this.isCheck('gote')) {
-                            const result = this.search(depth - 1, true);
-                            this.unmakeMove(move, backup);
-                            
-                            if (result === null) {
-                                this.hashTable.set(hash, { depth, result: null });
-                                // 千日手カウントを戻す
-                                this.repetitionTable.set(positionKey, Math.max(0, repetitions - 1));
-                                return null;  // この手で逃げられる
-                            } else if (result !== null) {
-                                // この応手に対して詰みがあるので記録
-                                bestResult = [this.formatMove(move), ...result];
-                            }
-                        } else {
-                            this.unmakeMove(move, backup);
-                        }
-                    }
-                    
-                    // すべての手で詰む場合は最短の手順を返す
-                    if (bestResult !== null) {
-                        this.hashTable.set(hash, { depth, result: bestResult });
-                        // 千日手カウントを戻す
-                        this.repetitionTable.set(positionKey, Math.max(0, repetitions - 1));
-                        return bestResult;
-                    }
-                    
-                    // すべての手で詰む（王手が解除できない場合）
-                    this.hashTable.set(hash, { depth, result: [] });
-                    // 千日手カウントを戻す
-                    this.repetitionTable.set(positionKey, Math.max(0, repetitions - 1));
-                    return [];
-                }
+              }
+
+              const elapsed = Date.now() - startTime;
+
+              if (solution) {
+                this.updateStatus(
+                  `詰みました！ ${solution.length}手詰め`,
+                  "success"
+                );
+                this.displayMoves(solution);
+              } else {
+                this.updateStatus("詰みません", "error");
+              }
+
+              document.getElementById("stats").innerHTML =
+                `探索ノード数: ${this.nodeCount.toLocaleString()} | ` +
+                `時間: ${(elapsed / 1000).toFixed(2)}秒`;
+            } catch (error) {
+              console.error("エラー:", error);
+              this.updateStatus("エラーが発生しました", "error");
+            } finally {
+              this.solving = false;
+            }
+          }, 10);
+        }
+
+        // 探索本体
+        search(depth, isSente, visitedPositions = new Set()) {
+          if (depth === 0) return null;
+          this.nodeCount++;
+          
+          // ノード数チェック
+          if (this.nodeCount > this.maxNodes) {
+            return null;
+          }
+          
+          // タイムアウトチェック
+          if (this.startTime && Date.now() - this.startTime > this.timeLimit) {
+            return null;
+          }
+
+          // ハッシュ表確認
+          const hash = this.hashPosition();
+          
+          // 千日手チェック（同一局面3回で無効）
+          if (visitedPositions.has(hash)) {
+            if (this.debugMode) {
+              this.debugLog(`千日手検出: ${hash.substring(0, 20)}...`);
+            }
+            return null;
+          }
+          
+          const cached = this.hashTable.get(hash);
+          if (cached && cached.depth >= depth) {
+            return cached.result;
+          }
+          
+          // 現在の局面を訪問済みに追加
+          const newVisited = new Set(visitedPositions);
+          newVisited.add(hash);
+
+          // 現在の状態確認
+          const isCheck = this.isCheck(isSente ? "gote" : "sente");
+
+          if (isSente) {
+            // 先手番：王手をかける
+            const moves = this.generateChecks();
+
+            if (this.debugMode && depth <= 3) {
+              this.debugLog(`[先手] 生成された王手: ${moves.length}手`);
+              if (moves.length > 0 && moves.length <= 10) {
+                this.debugLog(
+                  `  ${moves.map((m) => this.formatMove(m)).join(", ")}`
+                );
+              }
             }
 
-            // 王手生成（開き王手も含む）
-            generateChecks() {
-                const checks = [];
-                
-                // 盤上の駒の移動
-                for (let row = 0; row < 9; row++) {
-                    for (let col = 0; col < 9; col++) {
-                        const piece = this.board[row][col];
-                        if (piece && piece.side === 'sente') {
-                            const moves = this.getPieceMoves(row, col, piece);
-                            
-                            // デバッグ：２二飛の手を確認
-                            if (this.debugMode && row === 1 && col === 7 && piece.piece === '飛') {
-                                this.debugLog(`２二飛の生成された手数: ${moves.length}`);
-                                for (const m of moves) {
-                                    if (m.to === '２一') {
-                                        this.debugLog(`  ２一への手: piece=${m.piece}, promote=${m.promote}`);
-                                    }
-                                }
-                            }
-                            
-                            for (const move of moves) {
-                                // moveオブジェクトをコピーして、元のデータを保持
-                                const moveCopy = {...move};
-                                const backup = this.makeMove(move);
-                                // 移動後に王手になっているか（直接王手または開き王手）
-                                if (this.isCheck('gote')) {
-                                    // コピーした方を使用
-                                    checks.push(moveCopy);
-                                    if (this.debugMode) {
-                                        this.debugLog(`王手発見: ${this.formatMove(moveCopy)}`);
-                                    }
-                                }
-                                this.unmakeMove(move, backup);
-                            }
-                        }
-                    }
-                }
-                
-                // 持ち駒を打つ
-                for (const [piece, count] of Object.entries(this.mochiGoma.sente)) {
-                    if (count > 0) {
-                        for (let row = 0; row < 9; row++) {
-                            for (let col = 0; col < 9; col++) {
-                                if (!this.board[row][col] && this.canDrop(piece, row, col)) {
-                                    const move = {
-                                        type: 'drop',
-                                        piece: piece,
-                                        to: internalToHuman(row, col)
-                                    };
-                                    
-                                    const backup = this.makeMove(move);
-                                    if (this.isCheck('gote')) {
-                                        checks.push(move);
-                                    }
-                                    this.unmakeMove(move, backup);
-                                }
-                            }
-                        }
-                    }
-                }
-                
-                return checks;
+            for (const move of moves) {
+              const backup = this.makeMove(move);
+              const result = this.search(depth - 1, false, newVisited);
+              this.unmakeMove(move, backup);
+
+              if (result !== null) {
+                const solution = [this.formatMove(move), ...result];
+                this.hashTable.set(hash, { depth, result: solution });
+                return solution;
+              }
             }
 
-            // 王手回避手生成
-            generateEvasions() {
-                const evasions = [];
-                
-                // 玉を探す
-                let kingPos = null;
-                for (let row = 0; row < 9; row++) {
-                    for (let col = 0; col < 9; col++) {
-                        const piece = this.board[row][col];
-                        if (piece && piece.piece === '玉' && piece.side === 'gote') {
-                            kingPos = [row, col];
-                            break;
-                        }
-                    }
+            this.hashTable.set(hash, { depth, result: null });
+            return null;
+          } else {
+            // 後手番：王手回避
+            if (!this.isCheck("gote")) {
+              // 王手されていない場合は詰みではない
+              if (this.debugMode) {
+                this.debugLog(`後手が王手されていないので詰みではない`);
+              }
+              return null;
+            }
+
+            const moves = this.generateEvasions();
+
+            if (moves.length === 0) {
+              if (this.debugMode) {
+                this.debugLog(`回避手なし - 詰み！`);
+              }
+              return []; // 詰み
+            }
+
+            // すべての回避手を試す
+            let bestSolution = null;
+
+            for (const move of moves) {
+              const backup = this.makeMove(move);
+
+              // 王手が解除されているか確認
+              if (!this.isCheck("gote")) {
+                const result = this.search(depth - 1, true, newVisited);
+                this.unmakeMove(move, backup);
+
+                if (result === null) {
+                  this.hashTable.set(hash, { depth, result: null });
+                  return null; // この手で逃げられる
                 }
-                
-                if (!kingPos) return evasions;
-                
-                if (this.debugMode) {
-                    this.debugLog(`  後手玉の位置: ${internalToHuman(kingPos[0], kingPos[1])}`);
-                    // 攻撃駒の確認
-                    const attackers = this.getAttackers(kingPos[0], kingPos[1], 'sente');
-                    if (attackers.length > 0) {
-                        for (const att of attackers) {
-                            const p = this.board[att[0]][att[1]];
-                            this.debugLog(`  王手している駒: ${p.piece} at ${internalToHuman(att[0], att[1])}`);
-                        }
-                    }
+                // この回避手でも詰むなら記録（一番短い手順を選ぶ）
+                if (!bestSolution || result.length < bestSolution.length - 1) {
+                  bestSolution = [this.formatMove(move), ...result];
                 }
-                
-                // 1. 玉の移動
-                const kingMoves = this.getKingMoves(kingPos[0], kingPos[1]);
-                for (const move of kingMoves) {
+              } else {
+                this.unmakeMove(move, backup);
+              }
+            }
+
+            // すべての手を試した結果
+            if (bestSolution) {
+              this.hashTable.set(hash, { depth, result: bestSolution });
+              return bestSolution;
+            }
+
+            // すべての手で詰む
+            this.hashTable.set(hash, { depth, result: [] });
+            return [];
+          }
+        }
+
+        // 王手生成
+        generateChecks() {
+          const checks = [];
+
+          // 盤上の駒の移動
+          for (let row = 0; row < 9; row++) {
+            for (let col = 0; col < 9; col++) {
+              const piece = this.board[row][col];
+              if (piece && piece.side === "sente") {
+                const moves = this.getPieceMoves(row, col, piece);
+
+                for (const move of moves) {
+                  const backup = this.makeMove(move);
+                  if (this.isCheck("gote")) {
+                    checks.push(move);
+                  }
+                  this.unmakeMove(move, backup);
+                }
+              }
+            }
+          }
+
+          // 持ち駒を打つ
+          for (const [piece, count] of Object.entries(this.mochiGoma.sente)) {
+            if (count > 0) {
+              for (let row = 0; row < 9; row++) {
+                for (let col = 0; col < 9; col++) {
+                  if (!this.board[row][col] && this.canDrop(piece, row, col)) {
+                    const move = {
+                      type: "drop",
+                      piece: piece,
+                      to: internalToHuman(row, col),
+                    };
+
                     const backup = this.makeMove(move);
-                    // 移動後も王手されていないか確認
-                    if (!this.isCheck('gote')) {
-                        evasions.push(move);
+                    if (this.isCheck("gote")) {
+                      checks.push(move);
                     }
                     this.unmakeMove(move, backup);
+                  }
                 }
-                
-                // 2. 王手している駒を取る
-                const attackers = this.getAttackers(kingPos[0], kingPos[1], 'sente');
-                if (this.debugMode) {
-                    this.debugLog(`  攻撃者数: ${attackers.length}`);
-                    if (attackers.length > 0) {
-                        for (const att of attackers) {
-                            const p = this.board[att[0]][att[1]];
-                            this.debugLog(`    攻撃者: ${p.piece} at ${internalToHuman(att[0], att[1])}`);
-                        }
-                    }
-                }
-                if (attackers.length === 1) {  // 両王手でない場合のみ
-                    const attacker = attackers[0];
-                    // 後手の駒で取れるか確認
-                    for (let row = 0; row < 9; row++) {
-                        for (let col = 0; col < 9; col++) {
-                            const piece = this.board[row][col];
-                            if (piece && piece.side === 'gote' && piece.piece !== '玉') {
-                                if (this.canAttack(row, col, attacker[0], attacker[1], piece)) {
-                                    const move = {
-                                        type: 'move',
-                                        from: internalToHuman(row, col),
-                                        to: internalToHuman(attacker[0], attacker[1]),
-                                        piece: piece.piece,
-                                        captured: this.board[attacker[0]][attacker[1]]
-                                    };
-                                    evasions.push(move);
-                                }
-                            }
-                        }
-                    }
-                }
-                
-                // 3. 合駒（飛び駒による王手の場合）
-                if (attackers.length === 1) {
-                    const attacker = attackers[0];
-                    const attackPiece = this.board[attacker[0]][attacker[1]];
-                    
-                    if (this.debugMode) {
-                        this.debugLog(`  合駒チェック開始: 攻撃駒=${attackPiece.piece} at ${internalToHuman(attacker[0], attacker[1])}`);
-                    }
-                    
-                    // 飛び駒による王手か確認
-                    if (['飛', '龍', '角', '馬', '香'].includes(attackPiece.piece)) {
-                        if (this.debugMode) {
-                            this.debugLog(`  → 飛び駒による王手なので合駒を検討`);
-                        }
-                        // 王手の線上のマスを探す
-                        const dr = Math.sign(kingPos[0] - attacker[0]);
-                        const dc = Math.sign(kingPos[1] - attacker[1]);
-                        
-                        let r = attacker[0] + dr;
-                        let c = attacker[1] + dc;
-                        
-                        while (r !== kingPos[0] || c !== kingPos[1]) {
-                            // このマスに合駒できるか
-                            const blockPos = internalToHuman(r, c);
-                            
-                            if (this.debugMode) {
-                                this.debugLog(`    合駒候補位置: ${blockPos} [${r},${c}]`);
-                            }
-                            
-                            // 後手の駒を移動して合駒（効率化のため早期終了を追加）
-                            let foundMoveBlock = false;
-                            for (let row = 0; row < 9 && !foundMoveBlock; row++) {
-                                for (let col = 0; col < 9 && !foundMoveBlock; col++) {
-                                    const piece = this.board[row][col];
-                                    if (piece && piece.side === 'gote' && piece.piece !== '玉') {
-                                        const moves = this.getPieceMoves(row, col, piece);
-                                        for (const move of moves) {
-                                            if (move.to === blockPos) {
-                                                evasions.push(move);
-                                                // 複数の合駒候補を全て収集（最善手を選ぶため）
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                            
-                            // 後手の持駒から合駒を打つ
-                            // 詰将棋では先手の持駒以外は全て後手が持っているため、
-                            // 盤上にない駒種を後手の持駒として扱う
-                            const [blockRow, blockCol] = humanToInternal(blockPos);
-                            
-                            // 空きマスか確認
-                            if (this.board[blockRow][blockCol]) {
-                                if (this.debugMode) {
-                                    this.debugLog(`    → ${blockPos}は埋まっているのでスキップ`);
-                                }
-                                r += dr;
-                                c += dc;
-                                continue;
-                            }
-                            
-                            if (this.debugMode) {
-                                this.debugLog(`    → ${blockPos}は空きマス、合駒を検討`);
-                            }
-                            
-                            // まず、この地点への攻撃者数を確認（両効き判定）
-                            const blockAttackers = this.getAttackers(blockRow, blockCol, 'sente');
-                            
-                            // 両効き（2つ以上の駒で攻撃）の場合、合駒は無効
-                            if (blockAttackers.length <= 1) {
-                                // 合駒の優先順位（価値の低い駒から試す）
-                                // 詰将棋では通常、最も安い駒で合駒するのが最善
-                                const pieceOrder = ['歩', '香', '桂', '銀', '金', '角', '飛'];
-                                
-                                if (this.debugMode) {
-                                    this.debugLog(`    合駒を打つ候補位置: ${blockPos} (両効き数: ${blockAttackers.length})`);
-                                    // 後手の使える駒を確認
-                                    const usablePieces = [];
-                                    for (const p of ['歩', '香', '桂', '銀', '金', '角', '飛']) {
-                                        if (this.canGoteUsePiece(p)) {
-                                            usablePieces.push(p);
-                                        }
-                                    }
-                                    this.debugLog(`    後手が使える駒: ${usablePieces.join(', ')}`);
-                                }
-                                
-                                // 各駒種について合駒を試す
-                                for (const piece of pieceOrder) {
-                                    // この駒種が後手の持駒として使えるか確認
-                                    if (this.canGoteUsePiece(piece)) {
-                                        // 打てる場所か確認（二歩、行き所のない駒チェック）
-                                        if (this.canDropGote(piece, blockRow, blockCol)) {
-                                            // この合駒が有効かどうか判定
-                                            const testMove = {
-                                                type: 'drop',
-                                                piece: piece,
-                                                to: blockPos,
-                                                side: 'gote'
-                                            };
-                                            
-                                            if (this.debugMode) {
-                                                this.debugLog(`      ${piece}を${blockPos}に打つことを検討`);
-                                            }
-                                            
-                                            // 合駒を実行してみる
-                                            const backup = this.makeMove(testMove);
-                                            const stillInCheck = this.isCheck('gote');
-                                            this.unmakeMove(testMove, backup);
-                                            
-                                            // 王手が解除されれば有効な合駒
-                                            if (!stillInCheck) {
-                                                if (this.debugMode) {
-                                                    this.debugLog(`      → 有効な合駒: △${blockPos}${piece}打`);
-                                                }
-                                                evasions.push(testMove);
-                                                // 複数の合駒を全て考慮（最善手を探すため）
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                            
-                            r += dr;
-                            c += dc;
-                        }
-                    }
-                }
-                
-                return evasions;
+              }
             }
+          }
 
-            // 特定のマスを攻撃している駒を取得
-            getAttackers(targetRow, targetCol, attackerSide) {
-                const attackers = [];
-                
-                for (let row = 0; row < 9; row++) {
-                    for (let col = 0; col < 9; col++) {
-                        const piece = this.board[row][col];
-                        if (piece && piece.side === attackerSide) {
-                            if (this.canAttack(row, col, targetRow, targetCol, piece)) {
-                                attackers.push([row, col]);
-                            }
-                        }
-                    }
-                }
-                
-                return attackers;
-            }
-
-            // 駒の動き生成
-            getPieceMoves(row, col, piece) {
-                const moves = [];
-                const from = internalToHuman(row, col);
-                const directions = this.getPieceDirections(piece.piece, piece.side);
-                
-                for (const dir of directions) {
-                    // 飛び駒かどうか判定
-                    const isRangedPiece = ['飛', '龍', '角', '馬', '香'].includes(piece.piece);
-                    const maxRange = isRangedPiece ? 8 : 1;
-                    
-                    for (let dist = 1; dist <= maxRange; dist++) {
-                        const newRow = row + dir.row * dist;
-                        const newCol = col + dir.col * dist;
-                        
-                        if (!this.isInBoard(newRow, newCol)) break;
-                        
-                        const target = this.board[newRow][newCol];
-                        if (target && target.side === piece.side) break;
-                        
-                        const to = internalToHuman(newRow, newCol);
-                        // 成れる場合は成らずと成りの両方を生成（強制成りを除く）
-                        const canProm = this.canPromote(piece.piece, row, newRow, piece.side);
-                        const mustProm = this.mustPromote(piece.piece, row, newRow, piece.side);
-                        
-                        // 強制成りでなければ、成らずの手を生成
-                        if (!mustProm) {
-                            // 成らずの手
-                            moves.push({
-                                type: 'move',
-                                from: from,
-                                to: to,
-                                piece: piece.piece,
-                                captured: target,
-                                side: piece.side
-                            });
-                        }
-                        
-                        // 成れる場合は成りの手も生成
-                        if (canProm) {
-                            // 成りの手
-                            moves.push({
-                                type: 'move',
-                                from: from,
-                                to: to,
-                                piece: piece.piece,
-                                captured: target,
-                                promote: true,
-                                side: piece.side
-                            });
-                        }
-                        
-                        // 強制成りの場合、成らずの手がないことを確認
-                        if (mustProm && !canProm) {
-                            // エラー：強制成りなのに成れない
-                            console.error('強制成りエラー:', piece.piece, from, to);
-                        }
-                        
-                        // 駒を取ったら止まる
-                        if (target) break;
-                    }
-                }
-                
-                return moves;
-            }
-
-            // 玉の動き
-            getKingMoves(row, col) {
-                const moves = [];
-                const from = internalToHuman(row, col);
-                const dirs = [
-                    [-1, -1], [-1, 0], [-1, 1],
-                    [0, -1], [0, 1],
-                    [1, -1], [1, 0], [1, 1]
-                ];
-                
-                for (const [dr, dc] of dirs) {
-                    const newRow = row + dr;
-                    const newCol = col + dc;
-                    if (this.isInBoard(newRow, newCol)) {
-                        const target = this.board[newRow][newCol];
-                        if (!target || target.side !== 'gote') {
-                            moves.push({
-                                type: 'move',
-                                from: from,
-                                to: internalToHuman(newRow, newCol),
-                                piece: '玉',
-                                captured: target,
-                                side: 'gote'
-                            });
-                        }
-                    }
-                }
-                
-                return moves;
-            }
-
-            // 駒の方向定義（簡略版）
-            getPieceDirections(piece, side) {
-                const mult = side === 'sente' ? -1 : 1;
-                const basicDirs = {
-                    '歩': [{row: mult, col: 0}],
-                    '香': [{row: mult, col: 0}],
-                    '桂': [{row: mult * 2, col: -1}, {row: mult * 2, col: 1}],
-                    '銀': [
-                        {row: mult, col: -1}, {row: mult, col: 0}, {row: mult, col: 1},
-                        {row: -mult, col: -1}, {row: -mult, col: 1}
-                    ],
-                    '金': [
-                        {row: mult, col: -1}, {row: mult, col: 0}, {row: mult, col: 1},
-                        {row: 0, col: -1}, {row: 0, col: 1},
-                        {row: -mult, col: 0}
-                    ],
-                    '角': [
-                        {row: -1, col: -1}, {row: -1, col: 1},
-                        {row: 1, col: -1}, {row: 1, col: 1}
-                    ],
-                    '飛': [
-                        {row: -1, col: 0}, {row: 1, col: 0},
-                        {row: 0, col: -1}, {row: 0, col: 1}
-                    ],
-                    '玉': [
-                        {row: -1, col: -1}, {row: -1, col: 0}, {row: -1, col: 1},
-                        {row: 0, col: -1}, {row: 0, col: 1},
-                        {row: 1, col: -1}, {row: 1, col: 0}, {row: 1, col: 1}
-                    ],
-                    '龍': [
-                        {row: -1, col: 0}, {row: 1, col: 0},
-                        {row: 0, col: -1}, {row: 0, col: 1},
-                        {row: -1, col: -1}, {row: -1, col: 1},
-                        {row: 1, col: -1}, {row: 1, col: 1}
-                    ],
-                    '馬': [
-                        {row: -1, col: -1}, {row: -1, col: 1},
-                        {row: 1, col: -1}, {row: 1, col: 1},
-                        {row: -1, col: 0}, {row: 1, col: 0},
-                        {row: 0, col: -1}, {row: 0, col: 1}
-                    ]
-                };
-                
-                // 成駒は金の動き
-                const goldMove = basicDirs['金'];
-                basicDirs['と'] = goldMove;
-                basicDirs['杏'] = goldMove;
-                basicDirs['圭'] = goldMove;
-                basicDirs['全'] = goldMove;
-                
-                return basicDirs[piece] || [];
-            }
-
-            // 手を実行
-            makeMove(move) {
-                const backup = {
-                    board: null,
-                    mochiGoma: JSON.parse(JSON.stringify(this.mochiGoma))
-                };
-                
-                if (move.type === 'drop') {
-                    const [row, col] = humanToInternal(move.to);
-                    const side = move.side || 'sente';  // デフォルトは先手
-                    this.board[row][col] = { piece: move.piece, side: side };
-                    
-                    // 先手の持駒から減らす（後手の合駒は仮想的に無限にあるので減らさない）
-                    if (side === 'sente' && this.mochiGoma.sente[move.piece]) {
-                        this.mochiGoma.sente[move.piece]--;
-                        if (this.mochiGoma.sente[move.piece] === 0) {
-                            delete this.mochiGoma.sente[move.piece];
-                        }
-                    }
-                    // 後手の合駒打ちは持駒を管理しない（詰将棋では後手は盤上にない駒を全て持っている）
-                } else {
-                    const [fromRow, fromCol] = humanToInternal(move.from);
-                    const [toRow, toCol] = humanToInternal(move.to);
-                    
-                    backup.board = this.board[toRow][toCol];
-                    
-                    const movingPiece = this.board[fromRow][fromCol];
-                    if (move.promote) {
-                        this.board[toRow][toCol] = {
-                            piece: this.promotePiece(move.piece),
-                            side: movingPiece.side
-                        };
-                    } else {
-                        this.board[toRow][toCol] = movingPiece;
-                    }
-                    this.board[fromRow][fromCol] = null;
-                    
-                    // 駒を取った場合
-                    if (backup.board) {
-                        const demoted = this.demotePiece(backup.board.piece);
-                        if (!this.mochiGoma.sente[demoted]) {
-                            this.mochiGoma.sente[demoted] = 0;
-                        }
-                        this.mochiGoma.sente[demoted]++;
-                    }
-                }
-                
-                return backup;
-            }
-
-            // 手を戻す
-            unmakeMove(move, backup) {
-                if (move.type === 'drop') {
-                    const [row, col] = humanToInternal(move.to);
-                    this.board[row][col] = null;
-                } else {
-                    const [fromRow, fromCol] = humanToInternal(move.from);
-                    const [toRow, toCol] = humanToInternal(move.to);
-                    
-                    this.board[fromRow][fromCol] = this.board[toRow][toCol];
-                    if (move.promote) {
-                        this.board[fromRow][fromCol].piece = move.piece;
-                    }
-                    this.board[toRow][toCol] = backup.board;
-                }
-                
-                this.mochiGoma = backup.mochiGoma;
-            }
-
-            // 王手判定
-            isCheck(side) {
-                let kingPos = null;
-                for (let row = 0; row < 9; row++) {
-                    for (let col = 0; col < 9; col++) {
-                        const piece = this.board[row][col];
-                        if (piece && piece.piece === '玉' && piece.side === side) {
-                            kingPos = [row, col];
-                            break;
-                        }
-                    }
-                }
-                
-                if (!kingPos) return false;
-                
-                const enemySide = side === 'sente' ? 'gote' : 'sente';
-                
-                // 各敵駒から攻撃されているか
-                for (let row = 0; row < 9; row++) {
-                    for (let col = 0; col < 9; col++) {
-                        const piece = this.board[row][col];
-                        if (piece && piece.side === enemySide) {
-                            if (this.canAttack(row, col, kingPos[0], kingPos[1], piece)) {
-                                return true;
-                            }
-                        }
-                    }
-                }
-                
-                return false;
-            }
-
-            // 攻撃判定（修正版）
-            canAttack(fromRow, fromCol, toRow, toCol, piece) {
-                const dr = toRow - fromRow;
-                const dc = toCol - fromCol;
-                
-                // 同じ位置なら攻撃できない
-                if (dr === 0 && dc === 0) return false;
-                
-                // 駒種別の攻撃判定
-                switch (piece.piece) {
-                    case '歩':
-                        // 歩は1マス前進のみ
-                        const pawnDir = piece.side === 'sente' ? -1 : 1;
-                        return dr === pawnDir && dc === 0;
-                    
-                    case '香':
-                        // 香車は前方直線（先手は上、後手は下）
-                        const lanceDir = piece.side === 'sente' ? -1 : 1;
-                        if (dc !== 0 || Math.sign(dr) !== lanceDir) return false;
-                        // 途中に駒がないか確認
-                        return this.checkClearPath(fromRow, fromCol, toRow, toCol);
-                    
-                    case '桂':
-                        // 桂馬は2マス前＋1マス横
-                        const knightDir = piece.side === 'sente' ? -2 : 2;
-                        return dr === knightDir && Math.abs(dc) === 1;
-                    
-                    case '銀':
-                        // 銀は前3方向と後ろ斜め
-                        const silverForward = piece.side === 'sente' ? -1 : 1;
-                        if (Math.abs(dr) === 1 && Math.abs(dc) === 1) return true; // 斜め
-                        if (dr === silverForward && dc === 0) return true; // 前
-                        return false;
-                    
-                    case '金':
-                    case 'と':
-                    case '杏':
-                    case '圭':
-                    case '全':
-                        // 金と成駒は金の動き（前3方向、横2方向、後ろ1方向）
-                        const goldForward = piece.side === 'sente' ? -1 : 1;
-                        const goldBackward = -goldForward;
-                        if (Math.abs(dr) <= 1 && Math.abs(dc) <= 1) {
-                            // 後ろ斜めは不可
-                            if (dr === goldBackward && dc !== 0) return false;
-                            return true;
-                        }
-                        return false;
-                    
-                    case '飛':
-                        // 飛車は縦横直線
-                        if (dr !== 0 && dc !== 0) return false;
-                        return this.checkClearPath(fromRow, fromCol, toRow, toCol);
-                    
-                    case '龍':
-                        // 龍は飛車の動き＋斜め1マス
-                        if (Math.abs(dr) === 1 && Math.abs(dc) === 1) return true; // 斜め1マス
-                        if (dr === 0 || dc === 0) {
-                            return this.checkClearPath(fromRow, fromCol, toRow, toCol);
-                        }
-                        return false;
-                    
-                    case '角':
-                        // 角は斜め直線
-                        if (Math.abs(dr) !== Math.abs(dc)) return false;
-                        return this.checkClearPath(fromRow, fromCol, toRow, toCol);
-                    
-                    case '馬':
-                        // 馬は角の動き＋縦横1マス
-                        if (Math.abs(dr) === 1 && dc === 0) return true; // 縦1マス
-                        if (dr === 0 && Math.abs(dc) === 1) return true; // 横1マス
-                        if (Math.abs(dr) === Math.abs(dc)) {
-                            return this.checkClearPath(fromRow, fromCol, toRow, toCol);
-                        }
-                        return false;
-                    
-                    case '玉':
-                        // 玉は8方向1マス
-                        return Math.abs(dr) <= 1 && Math.abs(dc) <= 1;
-                    
-                    default:
-                        return false;
-                }
-            }
-
-            // 経路上に駒がないか確認（飛び駒用）
-            checkClearPath(fromRow, fromCol, toRow, toCol) {
-                const dr = Math.sign(toRow - fromRow);
-                const dc = Math.sign(toCol - fromCol);
-                const dist = Math.max(Math.abs(toRow - fromRow), Math.abs(toCol - fromCol));
-                
-                for (let i = 1; i < dist; i++) {
-                    const checkRow = fromRow + dr * i;
-                    const checkCol = fromCol + dc * i;
-                    if (this.board[checkRow][checkCol]) {
-                        return false;
-                    }
-                }
-                return true;
-            }
-
-            // 駒を打てるか
-            canDrop(piece, row, col) {
-                // 二歩チェック
-                if (piece === '歩') {
-                    for (let r = 0; r < 9; r++) {
-                        if (this.board[r][col] && 
-                            this.board[r][col].piece === '歩' && 
-                            this.board[r][col].side === 'sente') {
-                            return false;
-                        }
-                    }
-                }
-                
-                // 行き所チェック
-                if ((piece === '歩' || piece === '香') && row === 0) return false;
-                if (piece === '桂' && row <= 1) return false;
-                
-                return true;
-            }
-
-            // 後手が駒を打てるか
-            canDropGote(piece, row, col) {
-                // 二歩チェック
-                if (piece === '歩') {
-                    for (let r = 0; r < 9; r++) {
-                        if (this.board[r][col] && 
-                            this.board[r][col].piece === '歩' && 
-                            this.board[r][col].side === 'gote') {
-                            return false;
-                        }
-                    }
-                }
-                
-                // 行き所チェック（後手なので逆方向）
-                if ((piece === '歩' || piece === '香') && row === 8) return false;
-                if (piece === '桂' && row >= 7) return false;
-                
-                return true;
-            }
-
-            // 後手がこの駒を持駒として使えるか
-            canGoteUsePiece(piece) {
-                // 詰将棋では先手の持駒以外は全て後手が持っている
-                // ただし、盤上にある駒の数を考慮する必要がある
-                
-                // 各駒の最大枚数
-                const maxPieces = {
-                    '飛': 2, '角': 2, '金': 4, '銀': 4,
-                    '桂': 4, '香': 4, '歩': 18
-                };
-                
-                // 盤上にある駒を数える
-                let boardCount = 0;
-                let senteHandCount = this.mochiGoma.sente[piece] || 0;
-                
-                for (let row = 0; row < 9; row++) {
-                    for (let col = 0; col < 9; col++) {
-                        const p = this.board[row][col];
-                        if (p) {
-                            // 成駒を元の駒に戻して数える
-                            const demoted = this.demotePiece(p.piece);
-                            if (demoted === piece) {
-                                boardCount++;
-                            }
-                        }
-                    }
-                }
-                
-                // 後手が使える駒数 = 最大数 - 盤上の数 - 先手の持駒数
-                const available = maxPieces[piece] - boardCount - senteHandCount;
-                
-                if (this.debugMode && available > 0) {
-                    this.debugLog(`      後手は${piece}を持駒として使える (最大:${maxPieces[piece]} 盤上:${boardCount} 先手持:${senteHandCount} → 使用可能:${available})`);
-                }
-                
-                return available > 0;
-            }
-
-            // 合駒が有効かどうか判定
-            isValidAigoma(piece, row, col, attackers) {
-                // 攻撃者が0なら合駒の必要なし
-                if (attackers.length === 0) return false;
-                
-                // 攻撃者が2つ以上なら両効きで合駒無効
-                if (attackers.length >= 2) return false;
-                
-                // 1つの攻撃者の場合、合駒を試してみる
-                const testMove = {
-                    type: 'drop',
-                    piece: piece,
-                    to: internalToHuman(row, col),
-                    side: 'gote'
-                };
-                
-                // 合駒を実行
-                const backup = this.makeMove(testMove);
-                
-                // 合駒後も王手が続くか確認
-                const stillInCheck = this.isCheck('gote');
-                
-                // 合駒を戻す
-                this.unmakeMove(testMove, backup);
-                
-                // 合駒後に王手が解除されれば有効
-                return !stillInCheck;
-            }
-
-            // 成り判定
-            canPromote(piece, fromRow, toRow, side) {
-                if (piece === '金' || piece === '玉' || 
-                    piece === 'と' || piece === '杏' || piece === '圭' || 
-                    piece === '全' || piece === '馬' || piece === '龍') {
-                    return false;
-                }
-                
-                if (side === 'sente') {
-                    return fromRow <= 2 || toRow <= 2;
-                } else {
-                    return fromRow >= 6 || toRow >= 6;
-                }
-            }
-            
-            // 必ず成らなければならないか判定
-            mustPromote(piece, fromRow, toRow, side) {
-                if (side === 'sente') {
-                    // 歩・香車は１段目、桂馬は１・２段目で必ず成る
-                    if ((piece === '歩' || piece === '香') && toRow === 0) return true;
-                    if (piece === '桂' && toRow <= 1) return true;
-                } else {
-                    // 歩・香車は９段目、桂馬は８・９段目で必ず成る
-                    if ((piece === '歩' || piece === '香') && toRow === 8) return true;
-                    if (piece === '桂' && toRow >= 7) return true;
-                }
-                return false;
-            }
-
-            // 駒を成る
-            promotePiece(piece) {
-                const promoteMap = {
-                    '歩': 'と', '香': '杏', '桂': '圭', '銀': '全',
-                    '角': '馬', '飛': '龍'
-                };
-                return promoteMap[piece] || piece;
-            }
-
-            // 駒を戻す
-            demotePiece(piece) {
-                const demoteMap = {
-                    'と': '歩', '杏': '香', '圭': '桂', '全': '銀',
-                    '馬': '角', '龍': '飛'
-                };
-                return demoteMap[piece] || piece;
-            }
-
-            // 手の表示
-            formatMove(move) {
-                const sideSymbol = move.side === 'gote' ? '△' : '▲';
-                
-                if (move.type === 'drop') {
-                    return `${sideSymbol}${move.to}${move.piece}打`;
-                } else {
-                    const capture = move.captured ? '×' : '';
-                    
-                    // 元の駒種を判定（成駒の場合は元に戻す）
-                    let originalPiece = move.piece;
-                    if (['龍', '馬', 'と', '杏', '圭', '全'].includes(move.piece)) {
-                        originalPiece = this.demotePiece(move.piece);
-                    }
-                    
-                    // 成る場合は元の駒名+成、成らない場合は駒名のみ
-                    if (move.promote) {
-                        return `${sideSymbol}${move.to}${originalPiece}成${capture}(${move.from})`;
-                    } else {
-                        return `${sideSymbol}${move.to}${move.piece}${capture}(${move.from})`;
-                    }
-                }
-            }
-
-            // ユーティリティ
-            isInBoard(row, col) {
-                return row >= 0 && row < 9 && col >= 0 && col < 9;
-            }
-
-            // 盤面の妥当性チェック
-            validateBoard() {
-                try {
-                    let senteKingCount = 0;
-                    let goteKingCount = 0;
-                    const pieceCounts = {};
-                    const pawnColumns = { sente: new Set(), gote: new Set() };
-                    
-                    // 盤上の駒をカウント
-                    for (let row = 0; row < 9; row++) {
-                        for (let col = 0; col < 9; col++) {
-                            const piece = this.board[row][col];
-                            if (!piece) continue;
-                            
-                            // 玉のカウント
-                            if (piece.piece === '玉') {
-                                if (piece.side === 'sente') senteKingCount++;
-                                else goteKingCount++;
-                            }
-                            
-                            // 駒種別カウント
-                            const demoted = this.demotePiece(piece.piece);
-                            const key = `${demoted}_${piece.side}`;
-                            pieceCounts[key] = (pieceCounts[key] || 0) + 1;
-                            
-                            // 二歩チェック用
-                            if (piece.piece === '歩') {
-                                if (pawnColumns[piece.side].has(col)) {
-                                    return { valid: false, message: `${piece.side === 'sente' ? '先手' : '後手'}の二歩があります（${col + 1}筋）` };
-                                }
-                                pawnColumns[piece.side].add(col);
-                            }
-                            
-                            // 行き所のない駒チェック
-                            if (piece.side === 'sente') {
-                                if ((piece.piece === '歩' || piece.piece === '香') && row === 0) {
-                                    return { valid: false, message: `行き所のない${piece.piece}があります（${internalToHuman(row, col)}）` };
-                                }
-                                if (piece.piece === '桂' && row <= 1) {
-                                    return { valid: false, message: `行き所のない桂があります（${internalToHuman(row, col)}）` };
-                                }
-                            } else {
-                                if ((piece.piece === '歩' || piece.piece === '香') && row === 8) {
-                                    return { valid: false, message: `行き所のない${piece.piece}があります（${internalToHuman(row, col)}）` };
-                                }
-                                if (piece.piece === '桂' && row >= 7) {
-                                    return { valid: false, message: `行き所のない桂があります（${internalToHuman(row, col)}）` };
-                                }
-                            }
-                        }
-                    }
-                    
-                    // 玉のチェック
-                    if (senteKingCount > 1) {
-                        return { valid: false, message: '先手の玉が複数あります' };
-                    }
-                    if (goteKingCount === 0) {
-                        return { valid: false, message: '後手の玉がありません' };
-                    }
-                    if (goteKingCount > 1) {
-                        return { valid: false, message: '後手の玉が複数あります' };
-                    }
-                    
-                    // 駒数の上限チェック
-                    const maxPieces = {
-                        '飛': 2, '角': 2, '金': 4, '銀': 4,
-                        '桂': 4, '香': 4, '歩': 18
-                    };
-                    
-                    for (const [piece, maxCount] of Object.entries(maxPieces)) {
-                        const totalCount = (pieceCounts[`${piece}_sente`] || 0) + 
-                                         (pieceCounts[`${piece}_gote`] || 0) +
-                                         (this.mochiGoma.sente[piece] || 0);
-                        
-                        if (totalCount > maxCount) {
-                            return { valid: false, message: `${piece}の数が多すぎます（${totalCount}枚 / 最大${maxCount}枚）` };
-                        }
-                    }
-                    
-                    // 先手玉が王手されているかチェック（詰将棋では先手玉は王手されていてはいけない）
-                    if (senteKingCount === 1 && this.isCheck('sente')) {
-                        return { valid: false, message: '先手玉が王手されています（詰将棋では無効）' };
-                    }
-                    
-                    return { valid: true };
-                    
-                } catch (error) {
-                    console.error('盤面検証エラー:', error);
-                    return { valid: false, message: ' 盤面の検証中にエラーが発生しました' };
-                }
-            }
-
-            // 手の並び替え（良い手を優先）
-            orderMoves(moves, depth) {
-                // 各手にスコアを付ける
-                const scoredMoves = moves.map(move => {
-                    let score = 0;
-                    
-                    // キラームーブボーナス
-                    const killerKey = `${depth}_${this.formatMove(move)}`;
-                    if (this.killerMoves.has(killerKey)) {
-                        score += 1000;
-                    }
-                    
-                    // 駒を取る手を優先
-                    if (move.captured) {
-                        score += 500;
-                        // 価値の高い駒を取る手をさらに優先
-                        const pieceValues = {
-                            '飛': 100, '龍': 110, '角': 90, '馬': 95,
-                            '金': 60, '銀': 50, '桂': 40, '香': 30, '歩': 10
-                        };
-                        score += pieceValues[move.captured.piece] || 0;
-                    }
-                    
-                    // 駒打ちより移動を優先（一般的に移動の方が強い）
-                    if (move.type === 'move') {
-                        score += 20;
-                    }
-                    
-                    // 成る手を優先
-                    if (move.promote) {
-                        score += 30;
-                    }
-                    
-                    // ヒストリーテーブルのスコア
-                    const histKey = this.formatMove(move);
-                    if (this.historyTable.has(histKey)) {
-                        score += this.historyTable.get(histKey);
-                    }
-                    
-                    return { move, score };
-                });
-                
-                // スコアの高い順にソート
-                scoredMoves.sort((a, b) => b.score - a.score);
-                
-                return scoredMoves.map(sm => sm.move);
-            }
-
-            // キラームーブを記録
-            recordKillerMove(depth, move) {
-                const key = `${depth}_${this.formatMove(move)}`;
-                this.killerMoves.set(key, true);
-                
-                // 古いキラームーブを削除（メモリ節約）
-                if (this.killerMoves.size > 1000) {
-                    const firstKey = this.killerMoves.keys().next().value;
-                    this.killerMoves.delete(firstKey);
-                }
-            }
-
-            displayMoves(moves) {
-                const moveList = document.getElementById('moveList');
-                moveList.style.display = 'block';
-                moveList.innerHTML = '<h3>詰み手順</h3>';
-                
-                moves.forEach((move, index) => {
-                    const moveItem = document.createElement('div');
-                    moveItem.className = 'move-item';
-                    moveItem.textContent = `${index + 1}. ${move}`;
-                    moveList.appendChild(moveItem);
-                });
-            }
-
-            updateStatus(message, type = '') {
-                const status = document.getElementById('status');
-                status.textContent = message;
-                status.className = 'status ' + type;
-            }
-
-            clearBoard() {
-                this.board = Array(9).fill(null).map(() => Array(9).fill(null));
-                this.mochiGoma = { sente: {}, gote: {} };
-                this.updateBoard();
-                this.updateMochiGomaDisplay();
-                this.updateStatus('盤面をクリアしました');
-                document.getElementById('moveList').style.display = 'none';
-                document.getElementById('stats').innerHTML = '';
-            }
-            
-            updateMochiGomaDisplay() {
-                const senteMochi = document.getElementById('senteMochi');
-                
-                const formatMochi = (mochi) => {
-                    if (Object.keys(mochi).length === 0) return 'なし';
-                    return Object.entries(mochi)
-                        .map(([piece, count]) => `${piece}${count > 1 ? count : ''}`)
-                        .join(' ');
-                };
-                
-                senteMochi.textContent = formatMochi(this.mochiGoma.sente);
-            }
-
-            getProblemList() {
-                return [
-                    {
-                        name: '1手詰め（基本）',
-                        position: '△５一玉 ▲６二金 ▲５二金',
-                        description: '▲４二金で詰み'
-                    },
-                    {
-                        name: '3手詰め（持駒使用）',
-                        position: '△５二玉 △４二歩 ▲５五飛 ▲持金1',
-                        description: '▲５三金打から詰み'
-                    },
-                    {
-                        name: '3手詰め（合駒問題）',
-                        position: '△４一玉 △４二歩 ▲２二飛 ▲５三歩 ▲持銀1',
-                        description: '▲２一飛成→△３一歩合→▲５二銀打で詰み'
-                    },
-                    {
-                        name: '不詰み（合駒で逃れる）',
-                        position: '△２二玉 △２一銀 △２三歩 △１三歩 ▲４四龍 ▲５五角',
-                        description: '合駒で逃れて不詰み'
-                    },
-                    {
-                        name: '1手詰め（頭金）',
-                        position: '△１二玉 △１三歩 ▲２二金 ▲２四歩',
-                        description: '▲１三金で詰み'
-                    },
-                    {
-                        name: '3手詰め（飛車の利き）',
-                        position: '△１一玉 △２一金 ▲１三飛 ▲持金1',
-                        description: '▲２二金打から詰み'
-                    }
-                ];
-            }
-            
-            loadSampleProblem() {
-                const problems = this.getProblemList();
-                
-                // ランダムに選択
-                const problem = problems[Math.floor(Math.random() * problems.length)];
-                
-                this.clearBoard();
-                this.decodePosition(problem.position);
-                this.updateBoard();
-                this.updateMochiGomaDisplay();
-                this.updateStatus(`例題「${problem.name}」を読み込みました - ${problem.description}`);
-            }
-            
-            loadSpecificProblem(index) {
-                const problems = this.getProblemList();
-                
-                if (index >= 0 && index < problems.length) {
-                    const problem = problems[index];
-                    
-                    this.clearBoard();
-                    this.decodePosition(problem.position);
-                    this.updateBoard();
-                    this.updateMochiGomaDisplay();
-                    this.updateStatus(`例題「${problem.name}」を読み込みました - ${problem.description}`);
-                } else {
-                    this.updateStatus('無効な例題番号です', 'error');
-                }
-            }
-
-            // 配置を文字列にエンコード
-            encodePosition() {
-                const pieces = [];
-                
-                // 盤上の駒
-                for (let row = 0; row < 9; row++) {
-                    for (let col = 0; col < 9; col++) {
-                        const piece = this.board[row][col];
-                        if (piece) {
-                            const pos = internalToHuman(row, col);
-                            const prefix = piece.side === 'gote' ? '△' : '▲';
-                            pieces.push(`${prefix}${pos}${piece.piece}`);
-                        }
-                    }
-                }
-                
-                // 持ち駒
-                for (const [piece, count] of Object.entries(this.mochiGoma.sente)) {
-                    if (count > 0) {
-                        pieces.push(`▲持${piece}${count > 1 ? count : ''}`);
-                    }
-                }
-                
-                return pieces.join(' ');
-            }
-
-            // 文字列から配置をデコード
-            decodePosition(code) {
-                console.log('デコード開始:', code);
-                this.clearBoard();
-                
-                // スペースまたはカンマで分割
-                const parts = code.trim().split(/[\s,]+/);
-                console.log('分割されたパーツ:', parts);
-                
-                for (const part of parts) {
-                    if (part.length < 3) {
-                        console.log('スキップ（短すぎる）:', part);
-                        continue;
-                    }
-                    
-                    const prefix = part[0];
-                    const side = prefix === '△' ? 'gote' : 'sente';
-                    
-                    if (part.includes('持')) {
-                        // 持ち駒
-                        const match = part.match(/持(.+?)(\d*)$/);
-                        if (match) {
-                            const piece = match[1];
-                            const count = match[2] ? parseInt(match[2]) : 1;
-                            console.log(`持ち駒: ${piece} x ${count}`);
-                            this.mochiGoma.sente[piece] = count;
-                        }
-                    } else {
-                        // 盤上の駒
-                        const pos = part.substring(1, 3);
-                        const piece = part.substring(3);
-                        console.log(`盤上: ${pos} に ${side} の ${piece}`);
-                        
-                        const coords = humanToInternal(pos);
-                        if (coords) {
-                            const [row, col] = coords;
-                            this.board[row][col] = { piece, side };
-                        } else {
-                            console.error('座標変換失敗:', pos);
-                        }
-                    }
-                }
-                
-                this.updateBoard();
-                this.updateMochiGomaDisplay();
-                console.log('デコード完了');
-            }
-
-            // 配置を保存
-            saveToLocalStorage(name) {
-                const saved = this.getSavedPositions();
-                saved[name] = {
-                    code: this.encodePosition(),
-                    date: new Date().toLocaleString('ja-JP')
-                };
-                localStorage.setItem('tsumePositions', JSON.stringify(saved));
-            }
-
-            // 保存した配置を取得
-            getSavedPositions() {
-                const saved = localStorage.getItem('tsumePositions');
-                return saved ? JSON.parse(saved) : {};
-            }
-
-            // 配置を削除
-            deleteFromLocalStorage(name) {
-                const saved = this.getSavedPositions();
-                delete saved[name];
-                localStorage.setItem('tsumePositions', JSON.stringify(saved));
-            }
+          return checks;
         }
 
-        // エンジン初期化
-        const engine = new TsumeShogi();
+        // 王手回避手生成
+        generateEvasions() {
+          const evasions = [];
 
-        // グローバル関数
-        function solveTsume() {
-            engine.solveTsume();
-        }
-
-        function clearBoard() {
-            engine.clearBoard();
-        }
-
-        function loadSampleProblem() {
-            engine.loadSampleProblem();
-        }
-        
-        function loadSpecificProblem() {
-            const select = document.getElementById('problemSelect');
-            const index = parseInt(select.value);
-            if (!isNaN(index)) {
-                engine.loadSpecificProblem(index);
-            } else {
-                engine.updateStatus('例題を選択してください', 'error');
+          // 玉を探す
+          let kingPos = null;
+          for (let row = 0; row < 9; row++) {
+            for (let col = 0; col < 9; col++) {
+              const piece = this.board[row][col];
+              if (piece && piece.piece === "玉" && piece.side === "gote") {
+                kingPos = [row, col];
+                break;
+              }
             }
-        }
-        
-        function addMochiGoma() {
-            const select = document.getElementById('mochiPiece');
-            const piece = select.value;
-            if (!piece) return;
-            
-            if (!engine.mochiGoma.sente[piece]) {
-                engine.mochiGoma.sente[piece] = 0;
-            }
-            engine.mochiGoma.sente[piece]++;
-            engine.updateMochiGomaDisplay();
-            select.value = '';
-        }
-        
-        function clearSenteMochi() {
-            engine.mochiGoma.sente = {};
-            engine.updateMochiGomaDisplay();
-        }
+          }
 
-        // 配置の保存・読込機能
-        function savePosition() {
-            const name = prompt('配置の名前を入力してください：');
-            if (name && name.trim()) {
-                engine.saveToLocalStorage(name.trim());
-                engine.updateStatus(`「${name}」として保存しました`);
-                updatePositionSelect();
-            }
-        }
+          if (!kingPos) return evasions;
 
-        function showSavedPositions() {
-            const div = document.getElementById('savedPositions');
-            div.style.display = div.style.display === 'none' ? 'block' : 'none';
-            if (div.style.display === 'block') {
-                updatePositionSelect();
-            }
-        }
+          if (this.debugMode) {
+            this.debugLog(
+              `後手玉の位置: ${internalToHuman(kingPos[0], kingPos[1])}`
+            );
+          }
 
-        function updatePositionSelect() {
-            const select = document.getElementById('positionSelect');
-            const saved = engine.getSavedPositions();
-            
-            select.innerHTML = '<option value="">保存した配置を選択</option>';
-            
-            for (const [name, data] of Object.entries(saved)) {
-                const option = document.createElement('option');
-                option.value = name;
-                option.textContent = `${name} (${data.date})`;
-                select.appendChild(option);
+          // 1. 玉の移動
+          const kingMoves = this.getKingMoves(kingPos[0], kingPos[1]);
+          for (const move of kingMoves) {
+            const backup = this.makeMove(move);
+            // 移動後も王手されていないか確認
+            if (!this.isCheck("gote")) {
+              evasions.push(move);
             }
-        }
+            this.unmakeMove(move, backup);
+          }
 
-        function loadPosition() {
-            const select = document.getElementById('positionSelect');
-            const name = select.value;
-            if (!name) {
-                engine.updateStatus('配置を選択してください', 'error');
-                return;
-            }
-            
-            const saved = engine.getSavedPositions();
-            console.log('保存された配置一覧:', saved);
-            console.log('選択された配置名:', name);
-            
-            if (saved[name]) {
-                console.log('読み込む配置コード:', saved[name].code);
-                try {
-                    engine.decodePosition(saved[name].code);
-                    engine.updateStatus(`「${name}」を読み込みました`);
-                } catch (error) {
-                    console.error('配置読み込みエラー:', error);
-                    engine.updateStatus('配置の読み込みに失敗しました', 'error');
-                }
-            } else {
-                engine.updateStatus('指定された配置が見つかりません', 'error');
-            }
-        }
-
-        function deletePosition() {
-            const select = document.getElementById('positionSelect');
-            const name = select.value;
-            if (!name) return;
-            
-            if (confirm(`「${name}」を削除しますか？`)) {
-                engine.deleteFromLocalStorage(name);
-                updatePositionSelect();
-                engine.updateStatus(`「${name}」を削除しました`);
-            }
-        }
-
-        function exportPosition() {
-            const code = engine.encodePosition();
-            const textarea = document.getElementById('positionCode');
-            textarea.value = code;
-            
-            // クリップボードにコピー
-            textarea.select();
-            document.execCommand('copy');
-            
-            engine.updateStatus('配置コードをクリップボードにコピーしました');
-        }
-
-        function importPosition() {
-            const textarea = document.getElementById('positionCode');
-            const code = textarea.value.trim();
-            
-            if (code) {
-                try {
-                    engine.decodePosition(code);
-                    engine.updateStatus('配置コードから読み込みました');
-                } catch (error) {
-                    console.error('配置読み込みエラー:', error);
-                    engine.updateStatus('配置コードが正しくありません', 'error');
-                }
-            }
-        }
-
-        function toggleDebugMode() {
-            const checkbox = document.getElementById('debugMode');
-            const debugOutput = document.getElementById('debugOutput');
-            engine.debugMode = checkbox.checked;
-            debugOutput.style.display = checkbox.checked ? 'block' : 'none';
-            
-            if (checkbox.checked) {
-                engine.updateStatus('デバッグモード有効');
-            } else {
-                engine.updateStatus('デバッグモード無効');
-                debugOutput.innerHTML = '';
-            }
-        }
-
-        // デバッグ出力をエンジンに追加
-        engine.debugLog = function(message) {
-            if (this.debugMode) {
-                const debugOutput = document.getElementById('debugOutput');
-                const timestamp = new Date().toLocaleTimeString('ja-JP', { 
-                    hour12: false, 
-                    hour: '2-digit', 
-                    minute: '2-digit', 
-                    second: '2-digit'
-                });
-                debugOutput.innerHTML += `[${timestamp}] ${message}<br>`;
-                debugOutput.scrollTop = debugOutput.scrollHeight;
-                
-                // コンソールにも出力
-                console.log(`[DEBUG] ${message}`);
-            }
-        };
-        
-        // 盤面のデバッグ出力
-        engine.debugBoard = function() {
-            if (!this.debugMode) return;
-            
-            let boardStr = '\n';
-            boardStr += '  ９ ８ ７ ６ ５ ４ ３ ２ １\n';
-            boardStr += '+--+--+--+--+--+--+--+--+--+\n';
-            
+          // 2. 王手している駒を取る
+          const attackers = this.getAttackers(kingPos[0], kingPos[1], "sente");
+          if (attackers.length === 1) {
+            // 両王手でない場合のみ
+            const attacker = attackers[0];
+            // 後手の駒で取れるか確認
             for (let row = 0; row < 9; row++) {
-                boardStr += DAN_STR[row] + '|';
-                for (let col = 0; col < 9; col++) {
-                    const piece = this.board[row][col];
-                    if (piece) {
-                        const prefix = piece.side === 'gote' ? '△' : '▲';
-                        boardStr += prefix + piece.piece;
-                    } else {
-                        boardStr += '  ';
-                    }
-                    boardStr += '|';
+              for (let col = 0; col < 9; col++) {
+                const piece = this.board[row][col];
+                if (piece && piece.side === "gote" && piece.piece !== "玉") {
+                  if (
+                    this.canAttack(row, col, attacker[0], attacker[1], piece)
+                  ) {
+                    const move = {
+                      type: "move",
+                      from: internalToHuman(row, col),
+                      to: internalToHuman(attacker[0], attacker[1]),
+                      piece: piece.piece,
+                      captured: this.board[attacker[0]][attacker[1]],
+                    };
+                    evasions.push(move);
+                  }
                 }
-                boardStr += '\n';
+              }
             }
-            boardStr += '+--+--+--+--+--+--+--+--+--+\n';
-            
-            // 持ち駒
-            const formatMochi = (mochi) => {
-                if (Object.keys(mochi).length === 0) return 'なし';
-                return Object.entries(mochi)
-                    .map(([piece, count]) => `${piece}${count > 1 ? count : ''}`)
-                    .join(' ');
-            };
-            boardStr += `先手持駒: ${formatMochi(this.mochiGoma.sente)}\n`;
-            
-            this.debugLog(boardStr);
-        };
+          }
+
+          // 3. 合駒（飛び駒による王手の場合）
+          if (attackers.length === 1) {
+            const attacker = attackers[0];
+            const attackPiece = this.board[attacker[0]][attacker[1]];
+
+            if (this.debugMode) {
+              this.debugLog(
+                `王手している駒: ${attackPiece.piece} at ${internalToHuman(
+                  attacker[0],
+                  attacker[1]
+                )}`
+              );
+            }
+
+            // 飛び駒による王手か確認
+            if (["飛", "龍", "角", "馬", "香"].includes(attackPiece.piece)) {
+              if (this.debugMode) {
+                this.debugLog(`飛び駒による王手なので合駒を検討`);
+              }
+              // 王手の線上のマスを探す
+              const dr = Math.sign(kingPos[0] - attacker[0]);
+              const dc = Math.sign(kingPos[1] - attacker[1]);
+
+              let r = attacker[0] + dr;
+              let c = attacker[1] + dc;
+
+              while (r !== kingPos[0] || c !== kingPos[1]) {
+                // このマスに合駒できるか
+                const blockPos = internalToHuman(r, c);
+
+                if (this.debugMode) {
+                  this.debugLog(`  合駒候補位置: ${blockPos}`);
+                }
+
+                // 後手の駒を移動して合駒
+                for (let row = 0; row < 9; row++) {
+                  for (let col = 0; col < 9; col++) {
+                    const piece = this.board[row][col];
+                    if (
+                      piece &&
+                      piece.side === "gote" &&
+                      piece.piece !== "玉"
+                    ) {
+                      const moves = this.getPieceMoves(row, col, piece);
+                      for (const move of moves) {
+                        if (move.to === blockPos) {
+                          evasions.push(move);
+                        }
+                      }
+                    }
+                  }
+                }
+
+                // 合駒を打つ（詰将棋では後手は持駒無限）
+                const allPieces = ["歩", "香", "桂", "銀", "金", "角", "飛"];
+                const [blockRow, blockCol] = humanToInternal(blockPos);
+
+                // 空きマスか確認
+                if (!this.board[blockRow][blockCol]) {
+                  for (const piece of allPieces) {
+                    // 二歩チェック
+                    if (piece === "歩") {
+                      let hasPawn = false;
+                      for (let r = 0; r < 9; r++) {
+                        if (
+                          this.board[r][blockCol] &&
+                          this.board[r][blockCol].piece === "歩" &&
+                          this.board[r][blockCol].side === "gote"
+                        ) {
+                          hasPawn = true;
+                          break;
+                        }
+                      }
+                      if (hasPawn) continue;
+                    }
+
+                    // 行き所チェック
+                    if ((piece === "歩" || piece === "香") && blockRow === 8)
+                      continue;
+                    if (piece === "桂" && blockRow >= 7) continue;
+
+                    const move = {
+                      type: "drop",
+                      piece: piece,
+                      to: blockPos,
+                      side: "gote",
+                    };
+                    evasions.push(move);
+                  }
+                }
+
+                r += dr;
+                c += dc;
+              }
+            }
+          }
+
+          if (this.debugMode) {
+            this.debugLog(`生成された回避手数: ${evasions.length}`);
+          }
+
+          return evasions;
+        }
+
+        // 特定のマスを攻撃している駒を取得
+        getAttackers(targetRow, targetCol, attackerSide) {
+          const attackers = [];
+
+          for (let row = 0; row < 9; row++) {
+            for (let col = 0; col < 9; col++) {
+              const piece = this.board[row][col];
+              if (piece && piece.side === attackerSide) {
+                if (this.canAttack(row, col, targetRow, targetCol, piece)) {
+                  attackers.push([row, col]);
+                }
+              }
+            }
+          }
+
+          return attackers;
+        }
+
+        // 駒の動き生成
+        getPieceMoves(row, col, piece) {
+          const moves = [];
+          const from = internalToHuman(row, col);
+          const directions = this.getPieceDirections(piece.piece, piece.side);
+
+          for (const dir of directions) {
+            // 飛び駒かどうか判定
+            const isRangedPiece = ["飛", "龍", "角", "馬", "香"].includes(
+              piece.piece
+            );
+            const maxRange = isRangedPiece ? 8 : 1;
+
+            for (let dist = 1; dist <= maxRange; dist++) {
+              const newRow = row + dir.row * dist;
+              const newCol = col + dir.col * dist;
+
+              if (!this.isInBoard(newRow, newCol)) break;
+
+              const target = this.board[newRow][newCol];
+              if (target && target.side === piece.side) break;
+
+              const to = internalToHuman(newRow, newCol);
+
+              // 成れるかどうか判定
+              const canProm = this.canPromote(
+                piece.piece,
+                row,
+                newRow,
+                piece.side
+              );
+
+              // 必ず成らなければならないか判定
+              const mustProm =
+                piece.side === "sente"
+                  ? ((piece.piece === "歩" || piece.piece === "香") &&
+                      newRow === 0) ||
+                    (piece.piece === "桂" && newRow <= 1)
+                  : ((piece.piece === "歩" || piece.piece === "香") &&
+                      newRow === 8) ||
+                    (piece.piece === "桂" && newRow >= 7);
+
+              // 強制成りでなければ、成らずの手を生成
+              if (!mustProm) {
+                moves.push({
+                  type: "move",
+                  from: from,
+                  to: to,
+                  piece: piece.piece,
+                  captured: target,
+                });
+              }
+
+              // 成れる場合は成りの手も生成
+              if (canProm) {
+                moves.push({
+                  type: "move",
+                  from: from,
+                  to: to,
+                  piece: piece.piece,
+                  captured: target,
+                  promote: true,
+                });
+              }
+
+              // 駒を取ったら止まる
+              if (target) break;
+            }
+          }
+
+          return moves;
+        }
+
+        // 玉の動き
+        getKingMoves(row, col) {
+          const moves = [];
+          const from = internalToHuman(row, col);
+          const dirs = [
+            [-1, -1],
+            [-1, 0],
+            [-1, 1],
+            [0, -1],
+            [0, 1],
+            [1, -1],
+            [1, 0],
+            [1, 1],
+          ];
+
+          for (const [dr, dc] of dirs) {
+            const newRow = row + dr;
+            const newCol = col + dc;
+            if (this.isInBoard(newRow, newCol)) {
+              const target = this.board[newRow][newCol];
+              if (!target || target.side !== "gote") {
+                moves.push({
+                  type: "move",
+                  from: from,
+                  to: internalToHuman(newRow, newCol),
+                  piece: "玉",
+                  captured: target,
+                });
+              }
+            }
+          }
+
+          return moves;
+        }
+
+        // 駒の方向定義（簡略版）
+        getPieceDirections(piece, side) {
+          const mult = side === "sente" ? -1 : 1;
+          const basicDirs = {
+            歩: [{ row: mult, col: 0 }],
+            香: [{ row: mult, col: 0 }],
+            桂: [
+              { row: mult * 2, col: -1 },
+              { row: mult * 2, col: 1 },
+            ],
+            銀: [
+              { row: mult, col: -1 },
+              { row: mult, col: 0 },
+              { row: mult, col: 1 },
+              { row: -mult, col: -1 },
+              { row: -mult, col: 1 },
+            ],
+            金: [
+              { row: mult, col: -1 },
+              { row: mult, col: 0 },
+              { row: mult, col: 1 },
+              { row: 0, col: -1 },
+              { row: 0, col: 1 },
+              { row: -mult, col: 0 },
+            ],
+            角: [
+              { row: -1, col: -1 },
+              { row: -1, col: 1 },
+              { row: 1, col: -1 },
+              { row: 1, col: 1 },
+            ],
+            飛: [
+              { row: -1, col: 0 },
+              { row: 1, col: 0 },
+              { row: 0, col: -1 },
+              { row: 0, col: 1 },
+            ],
+            玉: [
+              { row: -1, col: -1 },
+              { row: -1, col: 0 },
+              { row: -1, col: 1 },
+              { row: 0, col: -1 },
+              { row: 0, col: 1 },
+              { row: 1, col: -1 },
+              { row: 1, col: 0 },
+              { row: 1, col: 1 },
+            ],
+            龍: [
+              { row: -1, col: 0 },
+              { row: 1, col: 0 },
+              { row: 0, col: -1 },
+              { row: 0, col: 1 },
+              { row: -1, col: -1 },
+              { row: -1, col: 1 },
+              { row: 1, col: -1 },
+              { row: 1, col: 1 },
+            ],
+            馬: [
+              { row: -1, col: -1 },
+              { row: -1, col: 1 },
+              { row: 1, col: -1 },
+              { row: 1, col: 1 },
+              { row: -1, col: 0 },
+              { row: 1, col: 0 },
+              { row: 0, col: -1 },
+              { row: 0, col: 1 },
+            ],
+          };
+
+          // 成駒は金の動き
+          const goldMove = basicDirs["金"];
+          basicDirs["と"] = goldMove;
+          basicDirs["杏"] = goldMove;
+          basicDirs["圭"] = goldMove;
+          basicDirs["全"] = goldMove;
+
+          return basicDirs[piece] || [];
+        }
+
+        // 手を実行
+        makeMove(move) {
+          const backup = {
+            board: null,
+            mochiGoma: JSON.parse(JSON.stringify(this.mochiGoma)),
+          };
+
+          if (move.type === "drop") {
+            const [row, col] = humanToInternal(move.to);
+            const side = move.side || "sente";
+            this.board[row][col] = { piece: move.piece, side: side };
+            // 先手の持駒のみ管理（後手は無限）
+            if (side === "sente" && this.mochiGoma.sente[move.piece]) {
+              this.mochiGoma.sente[move.piece]--;
+              if (this.mochiGoma.sente[move.piece] === 0) {
+                delete this.mochiGoma.sente[move.piece];
+              }
+            }
+          } else {
+            const [fromRow, fromCol] = humanToInternal(move.from);
+            const [toRow, toCol] = humanToInternal(move.to);
+
+            backup.board = this.board[toRow][toCol];
+
+            const movingPiece = this.board[fromRow][fromCol];
+            if (move.promote) {
+              this.board[toRow][toCol] = {
+                piece: this.promotePiece(move.piece),
+                side: movingPiece.side,
+              };
+            } else {
+              this.board[toRow][toCol] = movingPiece;
+            }
+            this.board[fromRow][fromCol] = null;
+
+            // 駒を取った場合
+            if (backup.board) {
+              const demoted = this.demotePiece(backup.board.piece);
+              if (!this.mochiGoma.sente[demoted]) {
+                this.mochiGoma.sente[demoted] = 0;
+              }
+              this.mochiGoma.sente[demoted]++;
+            }
+          }
+
+          return backup;
+        }
+
+        // 手を戻す
+        unmakeMove(move, backup) {
+          if (move.type === "drop") {
+            const [row, col] = humanToInternal(move.to);
+            this.board[row][col] = null;
+          } else {
+            const [fromRow, fromCol] = humanToInternal(move.from);
+            const [toRow, toCol] = humanToInternal(move.to);
+
+            this.board[fromRow][fromCol] = this.board[toRow][toCol];
+            if (move.promote) {
+              this.board[fromRow][fromCol].piece = move.piece;
+            }
+            this.board[toRow][toCol] = backup.board;
+          }
+
+          this.mochiGoma = backup.mochiGoma;
+        }
+
+        // 王手判定
+        isCheck(side) {
+          let kingPos = null;
+          for (let row = 0; row < 9; row++) {
+            for (let col = 0; col < 9; col++) {
+              const piece = this.board[row][col];
+              if (piece && piece.piece === "玉" && piece.side === side) {
+                kingPos = [row, col];
+                break;
+              }
+            }
+          }
+
+          if (!kingPos) return false;
+
+          const enemySide = side === "sente" ? "gote" : "sente";
+
+          // 各敵駒から攻撃されているか
+          for (let row = 0; row < 9; row++) {
+            for (let col = 0; col < 9; col++) {
+              const piece = this.board[row][col];
+              if (piece && piece.side === enemySide) {
+                if (this.canAttack(row, col, kingPos[0], kingPos[1], piece)) {
+                  return true;
+                }
+              }
+            }
+          }
+
+          return false;
+        }
+
+        // 攻撃判定
+        canAttack(fromRow, fromCol, toRow, toCol, piece) {
+          const dr = toRow - fromRow;
+          const dc = toCol - fromCol;
+
+          // 同じ位置なら攻撃できない
+          if (dr === 0 && dc === 0) return false;
+
+          const directions = this.getPieceDirections(piece.piece, piece.side);
+
+          for (const dir of directions) {
+            // 桂馬の特殊判定
+            if (piece.piece === "桂") {
+              if (dir.row === dr && dir.col === dc) return true;
+              continue;
+            }
+
+            // 方向が一致するか確認
+            if (dr === 0 && dc === 0) continue;
+
+            // 方向ベクトルの正規化
+            const dirNormR = dir.row === 0 ? 0 : dir.row / Math.abs(dir.row);
+            const dirNormC = dir.col === 0 ? 0 : dir.col / Math.abs(dir.col);
+            const moveNormR = dr === 0 ? 0 : dr / Math.abs(dr);
+            const moveNormC = dc === 0 ? 0 : dc / Math.abs(dc);
+
+            // 方向が一致しない場合はスキップ
+            if (dirNormR !== moveNormR || dirNormC !== moveNormC) continue;
+
+            // 距離を計算
+            const dist = Math.max(Math.abs(dr), Math.abs(dc));
+
+            // 1マス移動の駒
+            const oneStepPieces = [
+              "歩",
+              "銀",
+              "金",
+              "玉",
+              "と",
+              "杏",
+              "圭",
+              "全",
+            ];
+            if (oneStepPieces.includes(piece.piece)) {
+              return dist === 1;
+            }
+
+            // 龍と馬の斜め1マス
+            if (
+              piece.piece === "龍" &&
+              Math.abs(dr) === 1 &&
+              Math.abs(dc) === 1
+            ) {
+              return true;
+            }
+            if (piece.piece === "馬" && Math.abs(dr) + Math.abs(dc) === 1) {
+              return true;
+            }
+
+            // 飛び駒の場合、途中に駒がないか確認
+            const isRangedPiece = ["飛", "龍", "角", "馬", "香"].includes(
+              piece.piece
+            );
+            if (isRangedPiece) {
+              // 飛車系は直線移動のみ
+              if (
+                (piece.piece === "飛" || piece.piece === "龍") &&
+                dr !== 0 &&
+                dc !== 0
+              ) {
+                continue;
+              }
+              // 角系は斜め移動のみ
+              if (
+                (piece.piece === "角" || piece.piece === "馬") &&
+                Math.abs(dr) !== Math.abs(dc)
+              ) {
+                continue;
+              }
+
+              // 途中の駒をチェック
+              for (let i = 1; i < dist; i++) {
+                const checkRow = fromRow + dirNormR * i;
+                const checkCol = fromCol + dirNormC * i;
+                if (this.board[checkRow][checkCol]) {
+                  return false;
+                }
+              }
+              return true;
+            }
+          }
+
+          return false;
+        }
+
+        // 駒を打てるか
+        canDrop(piece, row, col) {
+          // 二歩チェック
+          if (piece === "歩") {
+            for (let r = 0; r < 9; r++) {
+              if (
+                this.board[r][col] &&
+                this.board[r][col].piece === "歩" &&
+                this.board[r][col].side === "sente"
+              ) {
+                return false;
+              }
+            }
+          }
+
+          // 行き所チェック
+          if ((piece === "歩" || piece === "香") && row === 0) return false;
+          if (piece === "桂" && row <= 1) return false;
+
+          return true;
+        }
+
+        // 成り判定
+        canPromote(piece, fromRow, toRow, side) {
+          if (
+            piece === "金" ||
+            piece === "玉" ||
+            piece === "と" ||
+            piece === "杏" ||
+            piece === "圭" ||
+            piece === "全" ||
+            piece === "馬" ||
+            piece === "龍"
+          ) {
+            return false;
+          }
+
+          if (side === "sente") {
+            return fromRow <= 2 || toRow <= 2;
+          } else {
+            return fromRow >= 6 || toRow >= 6;
+          }
+        }
+
+        // 駒を成る
+        promotePiece(piece) {
+          const promoteMap = {
+            歩: "と",
+            香: "杏",
+            桂: "圭",
+            銀: "全",
+            角: "馬",
+            飛: "龍",
+          };
+          return promoteMap[piece] || piece;
+        }
+
+        // 駒を戻す
+        demotePiece(piece) {
+          const demoteMap = {
+            と: "歩",
+            杏: "香",
+            圭: "桂",
+            全: "銀",
+            馬: "角",
+            龍: "飛",
+          };
+          return demoteMap[piece] || piece;
+        }
+
+        // 手の表示
+        formatMove(move) {
+          if (move.type === "drop") {
+            return `▲${move.to}${move.piece}打`;
+          } else {
+            const promote = move.promote ? "成" : "";
+            const capture = move.captured ? "×" : "";
+            return `▲${move.to}${move.piece}${promote}${capture}(${move.from})`;
+          }
+        }
+
+        // ユーティリティ
+        isInBoard(row, col) {
+          return row >= 0 && row < 9 && col >= 0 && col < 9;
+        }
+
+        displayMoves(moves) {
+          const moveList = document.getElementById("moveList");
+          moveList.style.display = "block";
+          moveList.innerHTML = "<h3>詰み手順</h3>";
+
+          moves.forEach((move, index) => {
+            const moveItem = document.createElement("div");
+            moveItem.className = "move-item";
+            moveItem.textContent = `${index + 1}. ${move}`;
+            moveList.appendChild(moveItem);
+          });
+        }
+
+        updateStatus(message, type = "") {
+          const status = document.getElementById("status");
+          status.textContent = message;
+          status.className = "status " + type;
+        }
+
+        clearBoard() {
+          this.board = Array(9)
+            .fill(null)
+            .map(() => Array(9).fill(null));
+          this.mochiGoma = { sente: {}, gote: {} };
+          this.updateBoard();
+          this.updateMochiGomaDisplay();
+          this.updateStatus("盤面をクリアしました");
+          document.getElementById("moveList").style.display = "none";
+          document.getElementById("stats").innerHTML = "";
+        }
+
+        updateMochiGomaDisplay() {
+          const senteMochi = document.getElementById("senteMochi");
+
+          const formatMochi = (mochi) => {
+            if (Object.keys(mochi).length === 0) return "なし";
+            return Object.entries(mochi)
+              .map(([piece, count]) => `${piece}${count > 1 ? count : ""}`)
+              .join(" ");
+          };
+
+          senteMochi.textContent = formatMochi(this.mochiGoma.sente);
+        }
+
+        loadSampleProblem() {
+          // 1手詰めの簡単な問題
+          this.clearBoard();
+
+          // ５一玉
+          const [r1, c1] = humanToInternal("５一");
+          this.board[r1][c1] = { piece: "玉", side: "gote" };
+
+          // ６二金
+          const [r2, c2] = humanToInternal("６二");
+          this.board[r2][c2] = { piece: "金", side: "sente" };
+
+          // ５二金
+          const [r3, c3] = humanToInternal("５二");
+          this.board[r3][c3] = { piece: "金", side: "sente" };
+
+          this.updateBoard();
+          this.updateMochiGomaDisplay();
+          this.updateStatus("1手詰めの例題を読み込みました");
+        }
+
+        // 配置を文字列にエンコード
+        encodePosition() {
+          const pieces = [];
+
+          // 盤上の駒
+          for (let row = 0; row < 9; row++) {
+            for (let col = 0; col < 9; col++) {
+              const piece = this.board[row][col];
+              if (piece) {
+                const pos = internalToHuman(row, col);
+                const prefix = piece.side === "gote" ? "△" : "▲";
+                pieces.push(`${prefix}${pos}${piece.piece}`);
+              }
+            }
+          }
+
+          // 持ち駒
+          for (const [piece, count] of Object.entries(this.mochiGoma.sente)) {
+            if (count > 0) {
+              pieces.push(`▲持${piece}${count > 1 ? count : ""}`);
+            }
+          }
+
+          return pieces.join(" ");
+        }
+
+        // 文字列から配置をデコード
+        decodePosition(code) {
+          console.log("デコード開始:", code);
+          this.clearBoard();
+
+          // スペースまたはカンマで分割
+          const parts = code.trim().split(/[\s,]+/);
+          console.log("分割されたパーツ:", parts);
+
+          for (const part of parts) {
+            if (part.length < 3) {
+              console.log("スキップ（短すぎる）:", part);
+              continue;
+            }
+
+            const prefix = part[0];
+            const side = prefix === "△" ? "gote" : "sente";
+
+            if (part.includes("持")) {
+              // 持ち駒
+              const match = part.match(/持(.+?)(\d*)$/);
+              if (match) {
+                const piece = match[1];
+                const count = match[2] ? parseInt(match[2]) : 1;
+                console.log(`持ち駒: ${piece} x ${count}`);
+                this.mochiGoma.sente[piece] = count;
+              }
+            } else {
+              // 盤上の駒
+              const pos = part.substring(1, 3);
+              const piece = part.substring(3);
+              console.log(`盤上: ${pos} に ${side} の ${piece}`);
+
+              const coords = humanToInternal(pos);
+              if (coords) {
+                const [row, col] = coords;
+                this.board[row][col] = { piece, side };
+              } else {
+                console.error("座標変換失敗:", pos);
+              }
+            }
+          }
+
+          this.updateBoard();
+          this.updateMochiGomaDisplay();
+          console.log("デコード完了");
+        }
+
+        // 配置を保存
+        saveToLocalStorage(name) {
+          const saved = this.getSavedPositions();
+          saved[name] = {
+            code: this.encodePosition(),
+            date: new Date().toLocaleString("ja-JP"),
+          };
+          localStorage.setItem("tsumePositions", JSON.stringify(saved));
+        }
+
+        // 保存した配置を取得
+        getSavedPositions() {
+          const saved = localStorage.getItem("tsumePositions");
+          return saved ? JSON.parse(saved) : {};
+        }
+
+        // 配置を削除
+        deleteFromLocalStorage(name) {
+          const saved = this.getSavedPositions();
+          delete saved[name];
+          localStorage.setItem("tsumePositions", JSON.stringify(saved));
+        }
+      }
+
+      // エンジン初期化
+      const engine = new TsumeShogi();
+
+      // グローバル関数
+      function solveTsume() {
+        engine.solveTsume();
+      }
+
+      function clearBoard() {
+        engine.clearBoard();
+      }
+
+      function loadSampleProblem() {
+        engine.loadSampleProblem();
+      }
+
+      function addMochiGoma() {
+        const select = document.getElementById("mochiPiece");
+        const piece = select.value;
+        if (!piece) return;
+
+        if (!engine.mochiGoma.sente[piece]) {
+          engine.mochiGoma.sente[piece] = 0;
+        }
+        engine.mochiGoma.sente[piece]++;
+        engine.updateMochiGomaDisplay();
+        select.value = "";
+      }
+
+      function clearSenteMochi() {
+        engine.mochiGoma.sente = {};
+        engine.updateMochiGomaDisplay();
+      }
+
+      // 配置の保存・読込機能
+      function savePosition() {
+        const name = prompt("配置の名前を入力してください：");
+        if (name && name.trim()) {
+          engine.saveToLocalStorage(name.trim());
+          engine.updateStatus(`「${name}」として保存しました`);
+          updatePositionSelect();
+        }
+      }
+
+      function showSavedPositions() {
+        const div = document.getElementById("savedPositions");
+        div.style.display = div.style.display === "none" ? "block" : "none";
+        if (div.style.display === "block") {
+          updatePositionSelect();
+        }
+      }
+
+      function updatePositionSelect() {
+        const select = document.getElementById("positionSelect");
+        const saved = engine.getSavedPositions();
+
+        select.innerHTML = '<option value="">保存した配置を選択</option>';
+
+        for (const [name, data] of Object.entries(saved)) {
+          const option = document.createElement("option");
+          option.value = name;
+          option.textContent = `${name} (${data.date})`;
+          select.appendChild(option);
+        }
+      }
+
+      function loadPosition() {
+        const select = document.getElementById("positionSelect");
+        const name = select.value;
+        if (!name) {
+          engine.updateStatus("配置を選択してください", "error");
+          return;
+        }
+
+        const saved = engine.getSavedPositions();
+        console.log("保存された配置一覧:", saved);
+        console.log("選択された配置名:", name);
+
+        if (saved[name]) {
+          console.log("読み込む配置コード:", saved[name].code);
+          try {
+            engine.decodePosition(saved[name].code);
+            engine.updateStatus(`「${name}」を読み込みました`);
+          } catch (error) {
+            console.error("配置読み込みエラー:", error);
+            engine.updateStatus("配置の読み込みに失敗しました", "error");
+          }
+        } else {
+          engine.updateStatus("指定された配置が見つかりません", "error");
+        }
+      }
+
+      function deletePosition() {
+        const select = document.getElementById("positionSelect");
+        const name = select.value;
+        if (!name) return;
+
+        if (confirm(`「${name}」を削除しますか？`)) {
+          engine.deleteFromLocalStorage(name);
+          updatePositionSelect();
+          engine.updateStatus(`「${name}」を削除しました`);
+        }
+      }
+
+      function exportPosition() {
+        const code = engine.encodePosition();
+        const textarea = document.getElementById("positionCode");
+        textarea.value = code;
+
+        // クリップボードにコピー
+        textarea.select();
+        document.execCommand("copy");
+
+        engine.updateStatus("配置コードをクリップボードにコピーしました");
+      }
+
+      function importPosition() {
+        const textarea = document.getElementById("positionCode");
+        const code = textarea.value.trim();
+
+        if (code) {
+          try {
+            engine.decodePosition(code);
+            engine.updateStatus("配置コードから読み込みました");
+          } catch (error) {
+            console.error("配置読み込みエラー:", error);
+            engine.updateStatus("配置コードが正しくありません", "error");
+          }
+        }
+      }
+
+      // デバッグモード切り替え
+      function toggleDebugMode() {
+        const checkbox = document.getElementById("debugMode");
+        const debugOutput = document.getElementById("debugOutput");
+        engine.debugMode = checkbox.checked;
+
+        if (engine.debugMode) {
+          debugOutput.style.display = "block";
+          debugOutput.innerHTML = "[DEBUG] デバッグモード有効<br>";
+        } else {
+          debugOutput.style.display = "none";
+          debugOutput.innerHTML = "";
+        }
+      }
+
+      // デバッグログ関数を追加
+      engine.debugLog = function (message) {
+        if (this.debugMode) {
+          const debugOutput = document.getElementById("debugOutput");
+          debugOutput.innerHTML += `[DEBUG] ${message}<br>`;
+          debugOutput.scrollTop = debugOutput.scrollHeight;
+          console.log("[DEBUG]", message);
+        }
+      };
     </script>
-</body>
+  </body>
 </html>

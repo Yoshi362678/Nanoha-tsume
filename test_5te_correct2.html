@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>5手詰め（2）テスト - なのは詰将棋エンジン</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+        h1 {
+            color: #333;
+            border-bottom: 3px solid #667eea;
+            padding-bottom: 10px;
+        }
+        .test-case {
+            background: #f9f9f9;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 10px;
+            border-left: 4px solid #667eea;
+        }
+        .position-code {
+            background: #f0f0f0;
+            padding: 15px;
+            border-radius: 5px;
+            font-family: monospace;
+            margin: 10px 0;
+            font-size: 16px;
+        }
+        .board-diagram {
+            background: #fffef0;
+            padding: 15px;
+            border: 2px solid #8b4513;
+            border-radius: 5px;
+            margin: 15px 0;
+            font-family: monospace;
+            white-space: pre;
+            line-height: 1.4;
+        }
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            margin: 5px;
+            transition: transform 0.2s;
+        }
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+        .copy-button {
+            background: #4CAF50;
+        }
+        .copy-button:hover {
+            background: #45a049;
+        }
+        .info {
+            background: #e3f2fd;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 15px 0;
+            border-left: 4px solid #2196F3;
+        }
+        .result {
+            padding: 15px;
+            border-radius: 5px;
+            margin: 15px 0;
+            display: none;
+        }
+        .result.show {
+            display: block;
+        }
+        .result.success {
+            background: #c8e6c9;
+            border-left: 4px solid #4CAF50;
+        }
+        .result.error {
+            background: #ffcdd2;
+            border-left: 4px solid #f44336;
+        }
+        .note {
+            background: #fff3cd;
+            border: 1px solid #ffc107;
+            border-radius: 5px;
+            padding: 15px;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎯 5手詰め（2）テスト</h1>
+        
+        <div class="test-case">
+            <h2>5手詰め（2）- 銀2枚の持駒</h2>
+            
+            <div class="board-diagram">
+  ９ ８ ７ ６ ５ ４ ３ ２ １
+┌──┬──┬──┬──┬──┬──┬──┬──┬──┐
+│  │  │  │  │  │  │  │  │△玉│一
+├──┼──┼──┼──┼──┼──┼──┼──┼──┤
+│  │  │  │  │  │  │  │  │  │二
+├──┼──┼──┼──┼──┼──┼──┼──┼──┤
+│  │  │  │  │  │  │  │▲角│  │三
+├──┼──┼──┼──┼──┼──┼──┼──┼──┤
+│  │  │  │  │  │  │  │  │▲と│四
+├──┼──┼──┼──┼──┼──┼──┼──┼──┤
+│  │  │  │  │  │  │  │  │  │五
+├──┼──┼──┼──┼──┼──┼──┼──┼──┤
+│  │  │  │  │  │  │  │  │  │六
+├──┼──┼──┼──┼──┼──┼──┼──┼──┤
+│  │  │  │  │  │  │  │  │  │七
+├──┼──┼──┼──┼──┼──┼──┼──┼──┤
+│  │  │  │  │  │  │  │  │  │八
+├──┼──┼──┼──┼──┼──┼──┼──┼──┤
+│  │  │  │  │  │  │  │  │  │九
+└──┴──┴──┴──┴──┴──┴──┴──┴──┘
+
+先手持駒：銀 銀
+            </div>
+            
+            <div class="info">
+                <strong>配置：</strong><br>
+                先手：▲２三角、▲１四と<br>
+                後手：△１一玉<br>
+                先手持駒：銀２枚
+            </div>
+            
+            <div class="position-code">
+                <strong>配置コード：</strong><br>
+                △１一玉 ▲２三角 ▲１四と ▲持銀2
+            </div>
+            
+            <button class="copy-button" onclick="copyToClipboard('△１一玉 ▲２三角 ▲１四と ▲持銀2')">
+                📋 配置コードをコピー
+            </button>
+            
+            <button onclick="openInEngine()">
+                🎯 エンジンで開く
+            </button>
+            
+            <div id="result1" class="result"></div>
+        </div>
+        
+        <div class="note">
+            <h3>💡 ポイント</h3>
+            <ul>
+                <li>銀2枚を活用した詰将棋</li>
+                <li>角と「と金」の配置による玉の逃げ道制限</li>
+                <li>持駒の効果的な使い方がカギ</li>
+            </ul>
+        </div>
+        
+        <div class="info">
+            <h3>📝 テスト手順</h3>
+            <ol>
+                <li>「配置コードをコピー」ボタンをクリック</li>
+                <li>Nanoha-tsume.htmlを開く</li>
+                <li>「配置コード」欄に貼り付け</li>
+                <li>「コードから読込」をクリック</li>
+                <li>「詰みを解く」ボタンをクリック</li>
+                <li>5手詰めと表示されることを確認</li>
+            </ol>
+        </div>
+        
+        <div class="info" style="background: #e8f5e9; border-left-color: #4CAF50;">
+            <h3>✅ 期待される結果</h3>
+            <p>エンジンが5手詰めを発見し、持駒の銀2枚を効果的に使った詰み手順を表示することを確認します。</p>
+        </div>
+    </div>
+    
+    <script>
+        function copyToClipboard(text) {
+            const textarea = document.createElement('textarea');
+            textarea.value = text;
+            document.body.appendChild(textarea);
+            textarea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textarea);
+            
+            // 結果表示
+            const result = document.getElementById('result1');
+            result.className = 'result success show';
+            result.innerHTML = '✅ 配置コードをクリップボードにコピーしました！';
+            
+            setTimeout(() => {
+                result.classList.remove('show');
+            }, 3000);
+        }
+        
+        function openInEngine() {
+            // 新しいウィンドウでエンジンを開く
+            window.open('Nanoha-tsume.html', '_blank');
+            
+            // コピーも同時に実行
+            copyToClipboard('△１一玉 ▲２三角 ▲１四と ▲持銀2');
+            
+            const result = document.getElementById('result1');
+            result.className = 'result success show';
+            result.innerHTML = '✅ エンジンを新しいタブで開きました。配置コードもコピー済みです。';
+            
+            setTimeout(() => {
+                result.classList.remove('show');
+            }, 5000);
+        }
+    </script>
+</body>
+</html>

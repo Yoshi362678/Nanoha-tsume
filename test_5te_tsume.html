@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>5手詰めテスト - なのは詰将棋エンジン</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+        h1 {
+            color: #333;
+            border-bottom: 3px solid #667eea;
+            padding-bottom: 10px;
+        }
+        .test-case {
+            background: #f9f9f9;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 10px;
+            border-left: 4px solid #667eea;
+        }
+        .test-case h2 {
+            color: #555;
+            margin-top: 0;
+        }
+        .position-code {
+            background: #f0f0f0;
+            padding: 10px;
+            border-radius: 5px;
+            font-family: monospace;
+            margin: 10px 0;
+        }
+        .expected {
+            background: #e8f5e9;
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+        .result {
+            padding: 15px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+        .success {
+            background: #c8e6c9;
+            border-left: 4px solid #4CAF50;
+        }
+        .error {
+            background: #ffcdd2;
+            border-left: 4px solid #f44336;
+        }
+        .processing {
+            background: #e3f2fd;
+            border-left: 4px solid #2196F3;
+        }
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            margin: 5px;
+            transition: transform 0.2s;
+        }
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        .move-list {
+            background: white;
+            border: 1px solid #ddd;
+            padding: 10px;
+            border-radius: 5px;
+            margin-top: 10px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        .stats {
+            color: #666;
+            font-size: 0.9em;
+            margin-top: 10px;
+        }
+        .warning {
+            background: #fff3cd;
+            border: 1px solid #ffc107;
+            border-radius: 5px;
+            padding: 15px;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎯 5手詰めテスト - なのは詰将棋エンジン</h1>
+        
+        <div class="warning">
+            <strong>⚠️ 注意：</strong> 5手詰めは計算量が多いため、解析に時間がかかる場合があります（最大30秒）。
+        </div>
+
+        <!-- テストケース1: 基本的な5手詰め -->
+        <div class="test-case">
+            <h2>テスト1: 基本的な5手詰め（持駒使用）</h2>
+            <div class="position-code">
+                配置: △２二玉 △１二歩 △３二歩 ▲１四香 ▲３四飛 ▲持金1
+            </div>
+            <div class="expected">
+                <strong>期待される結果:</strong> 5手詰め<br>
+                予想手順: ▲２四飛 △２三歩打 ▲１三香成 △同玉 ▲１四金打
+            </div>
+            <button onclick="runTest1()">テスト1を実行</button>
+            <div id="result1"></div>
+        </div>
+
+        <!-- テストケース2: 合駒を含む5手詰め -->
+        <div class="test-case">
+            <h2>テスト2: 合駒を含む5手詰め</h2>
+            <div class="position-code">
+                配置: △５一玉 △４一金 △６二歩 ▲５三香 ▲２一飛 ▲持銀1
+            </div>
+            <div class="expected">
+                <strong>期待される結果:</strong> 5手詰め<br>
+                予想手順: ▲５二香成 △同金 ▲４一飛成 △６一玉 ▲６二銀打
+            </div>
+            <button onclick="runTest2()">テスト2を実行</button>
+            <div id="result2"></div>
+        </div>
+
+        <!-- テストケース3: 玉の逃げ道を塞ぐ5手詰め -->
+        <div class="test-case">
+            <h2>テスト3: 逃げ道封鎖型5手詰め</h2>
+            <div class="position-code">
+                配置: △１一玉 △２一銀 ▲１三香 ▲３三角 ▲持金1 ▲持桂1
+            </div>
+            <div class="expected">
+                <strong>期待される結果:</strong> 5手詰め<br>
+                予想手順: ▲２二角成 △同銀 ▲１二香成 △同玉 ▲２四桂打
+            </div>
+            <button onclick="runTest3()">テスト3を実行</button>
+            <div id="result3"></div>
+        </div>
+
+        <!-- 全テスト実行 -->
+        <div style="margin-top: 30px; text-align: center;">
+            <button onclick="runAllTests()" style="padding: 15px 30px; font-size: 18px;">
+                🚀 全テストを実行
+            </button>
+        </div>
+
+        <!-- ログ出力エリア -->
+        <div style="margin-top: 30px;">
+            <h3>デバッグログ</h3>
+            <div id="debugLog" style="background: #f0f0f0; padding: 10px; border-radius: 5px; font-family: monospace; font-size: 12px; max-height: 300px; overflow-y: auto;">
+                待機中...
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // メインHTMLファイルを埋め込みで実行するためのiframe
+        let engineFrame = null;
+        let currentTest = null;
+        
+        function initEngine() {
+            return new Promise((resolve) => {
+                if (engineFrame) {
+                    engineFrame.remove();
+                }
+                
+                engineFrame = document.createElement('iframe');
+                engineFrame.src = 'Nanoha-tsume.html';
+                engineFrame.style.display = 'none';
+                document.body.appendChild(engineFrame);
+                
+                engineFrame.onload = () => {
+                    setTimeout(resolve, 1000); // エンジンの初期化を待つ
+                };
+            });
+        }
+        
+        function logDebug(message) {
+            const log = document.getElementById('debugLog');
+            const time = new Date().toLocaleTimeString('ja-JP');
+            log.innerHTML += `[${time}] ${message}<br>`;
+            log.scrollTop = log.scrollHeight;
+        }
+        
+        async function runTest(testNumber, positionCode, expectedMoves) {
+            const resultDiv = document.getElementById(`result${testNumber}`);
+            resultDiv.className = 'result processing';
+            resultDiv.innerHTML = '⏳ 解析中...';
+            
+            logDebug(`テスト${testNumber}開始: ${positionCode}`);
+            
+            try {
+                await initEngine();
+                const engine = engineFrame.contentWindow.engine;
+                
+                if (!engine) {
+                    throw new Error('エンジンの初期化に失敗しました');
+                }
+                
+                // 配置をセット
+                engine.decodePosition(positionCode);
+                logDebug(`配置デコード完了`);
+                
+                // デバッグモードを有効化
+                engine.debugMode = true;
+                
+                // 探索開始時刻を記録
+                const startTime = Date.now();
+                
+                // 詰み探索を実行（同期的にラップ）
+                return new Promise((resolve) => {
+                    // エンジンの元のupdateStatus関数を保存
+                    const originalUpdate = engine.updateStatus.bind(engine);
+                    
+                    // 結果をキャプチャするために上書き
+                    engine.updateStatus = function(message, type) {
+                        originalUpdate(message, type);
+                        
+                        if (type === 'success' || type === 'error') {
+                            const elapsed = Date.now() - startTime;
+                            logDebug(`探索完了: ${message} (${elapsed}ms)`);
+                            
+                            if (type === 'success' && message.includes('手詰め')) {
+                                const moveCount = parseInt(message.match(/(\d+)手詰め/)[1]);
+                                
+                                if (moveCount === expectedMoves) {
+                                    resultDiv.className = 'result success';
+                                    resultDiv.innerHTML = `
+                                        ✅ <strong>成功！</strong><br>
+                                        ${message}<br>
+                                        <div class="stats">
+                                            探索時間: ${(elapsed / 1000).toFixed(2)}秒<br>
+                                            ノード数: ${engine.nodeCount.toLocaleString()}
+                                        </div>
+                                    `;
+                                } else {
+                                    resultDiv.className = 'result error';
+                                    resultDiv.innerHTML = `
+                                        ❌ <strong>手数が一致しません</strong><br>
+                                        期待: ${expectedMoves}手詰め, 実際: ${moveCount}手詰め<br>
+                                        <div class="stats">
+                                            探索時間: ${(elapsed / 1000).toFixed(2)}秒
+                                        </div>
+                                    `;
+                                }
+                            } else {
+                                resultDiv.className = 'result error';
+                                resultDiv.innerHTML = `
+                                    ❌ <strong>詰みが見つかりませんでした</strong><br>
+                                    ${message}<br>
+                                    <div class="stats">
+                                        探索時間: ${(elapsed / 1000).toFixed(2)}秒
+                                    </div>
+                                `;
+                            }
+                            
+                            // 元の関数に戻す
+                            engine.updateStatus = originalUpdate;
+                            resolve();
+                        }
+                    };
+                    
+                    // 探索を開始
+                    engine.solveTsume();
+                });
+                
+            } catch (error) {
+                logDebug(`エラー: ${error.message}`);
+                resultDiv.className = 'result error';
+                resultDiv.innerHTML = `❌ エラー: ${error.message}`;
+            }
+        }
+        
+        async function runTest1() {
+            await runTest(1, '△２二玉 △１二歩 △３二歩 ▲１四香 ▲３四飛 ▲持金1', 5);
+        }
+        
+        async function runTest2() {
+            await runTest(2, '△５一玉 △４一金 △６二歩 ▲５三香 ▲２一飛 ▲持銀1', 5);
+        }
+        
+        async function runTest3() {
+            await runTest(3, '△１一玉 △２一銀 ▲１三香 ▲３三角 ▲持金1 ▲持桂1', 5);
+        }
+        
+        async function runAllTests() {
+            logDebug('=== 全テスト開始 ===');
+            await runTest1();
+            await new Promise(resolve => setTimeout(resolve, 2000)); // テスト間の待機
+            await runTest2();
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            await runTest3();
+            logDebug('=== 全テスト完了 ===');
+        }
+    </script>
+</body>
+</html>
